@@ -19,6 +19,10 @@ export interface NFT {
   image: string;
   rarity?: string;
   collection?: string;
+  // Additional fields for transfer operations
+  contract?: string;
+  dappID?: string;
+  serialNumber?: number;
 }
 
 export interface PlayerAnswer {
@@ -46,6 +50,10 @@ export interface Match {
   startedAt?: string;
   finishedAt?: string;
   currentQuestionIndex: number;
+  // NFT Transfer tracking
+  nftTransferStatus?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+  nftTransferError?: string;
+  nftTransferAttempts?: number;
 }
 
 export interface GameState {
@@ -68,6 +76,7 @@ export interface User {
 export interface FlowAccount {
   address: string;
   balance: number;
+  isInitialized?: boolean;
 }
 
 export interface TokenResponse {
@@ -78,4 +87,49 @@ export interface TokenResponse {
   collection: {
     name: string;
   };
+}
+
+// NFT Transfer Types
+export interface WithdrawNftInput {
+  contractQualifiedName?: string;
+  dappID: string;
+  destinationAddress: string;
+  tokenID: number;
+}
+
+export interface NftWithdrawal {
+  id: string;
+  tokenID: number;
+  dappID: string;
+  contractQualifiedName?: string;
+  destinationAddress: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+  createdAt: string;
+  completedAt?: string;
+  transactionHash?: string;
+}
+
+export interface WithdrawNftResponse {
+  id: string;
+  withdrawal: NftWithdrawal;
+}
+
+// Transfer operation tracking
+export interface NFTTransferOperation {
+  id: string;
+  matchId: string;
+  fromPlayer: 'A' | 'B';
+  toPlayer: 'A' | 'B';
+  nftId: string;
+  nftTokenId: number;
+  fromAddress: string;
+  toAddress: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+  attempts: number;
+  maxAttempts: number;
+  error?: string;
+  withdrawalId?: string;
+  transactionHash?: string;
+  createdAt: string;
+  updatedAt: string;
 } 

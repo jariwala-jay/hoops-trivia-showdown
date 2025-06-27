@@ -2,11 +2,230 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Match, Question } from '@/types';
+import { Match, Question, Player } from '@/types';
 import Image from 'next/image';
 
 interface MatchClientProps {
   id: string;
+}
+
+// Component for the finished game screen with NFT transfer functionality
+function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | null }) {
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [transferStatus, setTransferStatus] = useState<string | null>(null);
+  const [transferError, setTransferError] = useState<string | null>(null);
+
+  // Check transfer status on load
+  useEffect(() => {
+    if (match.winner !== 'TIE') {
+      checkTransferStatus();
+    }
+  }, [match.id, match.winner]);
+
+  const checkTransferStatus = async () => {
+    try {
+      const response = await fetch(`/api/match/transfer-nft?matchId=${match.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setTransferStatus(data.transferStatus);
+        if (data.transferError) {
+          setTransferError(data.transferError);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking transfer status:', error);
+    }
+  };
+
+  const handleRetryTransfer = async () => {
+    setIsTransferring(true);
+    setTransferError(null);
+
+    try {
+      const response = await fetch('/api/match/transfer-nft', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ matchId: match.id }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setTransferStatus('COMPLETED');
+        setTransferError(null);
+      } else {
+        setTransferError(data.error || 'Transfer failed');
+        setTransferStatus('FAILED');
+      }
+    } catch (error) {
+      setTransferError(error instanceof Error ? error.message : 'Unknown error');
+      setTransferStatus('FAILED');
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
+  const renderTransferStatus = () => {
+    if (match.winner === 'TIE') {
+      return (
+        <div className="mb-8">
+          <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
+            <div className="flex items-center justify-center space-x-2">
+              <div className="text-blue-400">🤝</div>
+              <span className="text-blue-200">No NFT transfers - each player keeps their NFT!</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    switch (transferStatus) {
+      case 'COMPLETED':
+        return (
+          <div className="mb-8">
+            <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4">
+              <div className="flex items-center justify-center space-x-2">
+                <div className="text-green-400">✅</div>
+                <span className="text-green-200">NFT transfer completed successfully!</span>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'IN_PROGRESS':
+        return (
+          <div className="mb-8">
+            <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4">
+              <div className="flex items-center justify-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
+                <span className="text-yellow-200">Transferring NFTs...</span>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'FAILED':
+        return (
+          <div className="mb-8">
+            <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-4">
+              <div className="text-center">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <div className="text-red-400">⚠️</div>
+                  <span className="text-red-200">NFT transfer failed</span>
+                </div>
+                {transferError && (
+                  <p className="text-red-300 text-sm mb-3">{transferError}</p>
+                )}
+                <button
+                  onClick={handleRetryTransfer}
+                  disabled={isTransferring}
+                  className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-400 disabled:opacity-50"
+                >
+                  {isTransferring ? 'Retrying...' : 'Retry Transfer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'PENDING':
+      default:
+        return (
+          <div className="mb-8">
+            <div className="bg-orange-500/20 border border-orange-500/30 rounded-lg p-4">
+              <div className="text-center">
+                <div className="flex items-center justify-center space-x-2 mb-2">
+                  <div className="text-orange-400">⏳</div>
+                  <span className="text-orange-200">NFT transfer pending...</span>
+                </div>
+                <p className="text-orange-300 text-sm mb-3">
+                  The system is preparing to transfer the NFTs. This may take a few moments.
+                </p>
+                <button
+                  onClick={checkTransferStatus}
+                  className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-400"
+                >
+                  Check Status
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-yellow-500 to-orange-600">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto text-center">
+          <h1 className="text-6xl font-bold text-white mb-8">
+            {match.winner === 'TIE' ? 'It&apos;s a Tie!' : 'Game Over!'}
+          </h1>
+          
+          {winner && (
+            <div className="mb-8">
+              <h2 className="text-4xl font-bold text-white mb-4">
+                🏆 {winner.name} Wins!
+              </h2>
+              <p className="text-xl text-white/80">
+                Congratulations! You win both NFTs!
+              </p>
+            </div>
+          )}
+
+          {/* NFT Transfer Status */}
+          {renderTransferStatus()}
+          
+          <div className="grid md:grid-cols-2 gap-8 mb-8">
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white">
+              <h3 className="text-2xl font-bold mb-4">{match.playerA.name}</h3>
+              <div className="text-4xl font-bold text-orange-400 mb-4">{match.scoreA}</div>
+              <div className="w-32 h-40 mx-auto rounded-lg overflow-hidden">
+                <img
+                  src={match.nftA.image}
+                  alt={match.nftA.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <p className="mt-2">{match.nftA.name}</p>
+              {match.winner === 'B' && transferStatus === 'COMPLETED' && (
+                <div className="mt-2 text-red-400 text-sm">
+                  ➡️ Transferred to {match.playerB?.name}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white">
+              <h3 className="text-2xl font-bold mb-4">{match.playerB?.name}</h3>
+              <div className="text-4xl font-bold text-blue-400 mb-4">{match.scoreB}</div>
+              <div className="w-32 h-40 mx-auto rounded-lg overflow-hidden">
+                <img
+                  src={match.nftB!.image}
+                  alt={match.nftB!.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <p className="mt-2">{match.nftB!.name}</p>
+              {match.winner === 'A' && transferStatus === 'COMPLETED' && (
+                <div className="mt-2 text-red-400 text-sm">
+                  ➡️ Transferred to {match.playerA.name}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Link
+            href="/"
+            className="bg-white text-orange-600 px-8 py-4 rounded-lg font-bold text-xl hover:bg-gray-100 transform hover:scale-105 transition-all"
+          >
+            Play Again
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function MatchClient({ id }: MatchClientProps) {
@@ -500,75 +719,13 @@ export default function MatchClient({ id }: MatchClientProps) {
   // Game finished
   if (match.status === 'FINISHED') {
     const winner = match.winner === 'A' ? match.playerA : 
-                   match.winner === 'B' ? match.playerB : null;
+                   match.winner === 'B' ? (match.playerB || null) : null;
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-yellow-500 to-orange-600">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-6xl font-bold text-white mb-8">
-              {match.winner === 'TIE' ? 'It\'s a Tie!' : 'Game Over!'}
-            </h1>
-            
-            {winner && (
-              <div className="mb-8">
-                <h2 className="text-4xl font-bold text-white mb-4">
-                  🏆 {winner.name} Wins!
-                </h2>
-                <p className="text-xl text-white/80">
-                  Congratulations! You win both NFTs!
-                </p>
-              </div>
-            )}
-            
-            <div className="grid md:grid-cols-2 gap-8 mb-8">
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white">
-                <h3 className="text-2xl font-bold mb-4">{match.playerA.name}</h3>
-                <div className="text-4xl font-bold text-orange-400 mb-4">{match.scoreA}</div>
-                <div className="w-32 h-40 mx-auto rounded-lg overflow-hidden">
-                  <Image
-                    src={match.nftA.image}
-                    alt={match.nftA.name}
-                    className="w-full h-full object-cover"
-                    width={100}
-                    height={100}
-                  />
-                </div>
-                <p className="mt-2">{match.nftA.name}</p>
-              </div>
-
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white">
-                <h3 className="text-2xl font-bold mb-4">{match.playerB?.name}</h3>
-                <div className="text-4xl font-bold text-blue-400 mb-4">{match.scoreB}</div>
-                <div className="w-32 h-40 mx-auto rounded-lg overflow-hidden">
-                  <Image
-                    src={match.nftB!.image}
-                    alt={match.nftB!.name}
-                    className="w-full h-full object-cover"
-                    width={100}
-                    height={100}
-                  />
-                </div>
-                <p className="mt-2">{match.nftB!.name}</p>
-              </div>
-            </div>
-
-            <Link
-              href="/"
-              className="bg-white text-orange-600 px-8 py-4 rounded-lg font-bold text-xl hover:bg-gray-100 transform hover:scale-105 transition-all"
-            >
-              Play Again
-            </Link>
-            
-            {/* Show connection status for debugging */}
-            {connectionStatus === 'disconnected' && (
-              <div className="mt-4 text-white/60 text-sm">
-                Connection closed (match finished)
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <GameFinishedScreen 
+        match={match} 
+        winner={winner} 
+      />
     );
   }
 

@@ -2,6 +2,33 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, calculateScore } from '@/lib/db';
 import { PlayerAnswer } from '@/types';
 
+// Background function to trigger NFT transfer
+async function triggerNFTTransfer(matchId: string): Promise<void> {
+  try {
+    console.log(`Triggering background NFT transfer for match ${matchId}`);
+    
+    // Call the transfer endpoint internally
+    const response = await fetch(`${process.env.AUTH0_BASE_URL || 'http://localhost:4000'}/api/match/transfer-nft`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ matchId })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Transfer API call failed: ${errorData.error || 'Unknown error'}`);
+    }
+
+    const result = await response.json();
+    console.log(`NFT transfer result for match ${matchId}:`, result.status);
+  } catch (error) {
+    console.error(`Failed to trigger NFT transfer for match ${matchId}:`, error);
+    // Don't throw - this is a background operation
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -119,8 +146,17 @@ export async function POST(request: NextRequest) {
         updatedMatch = await db.updateMatch(matchId, {
           status: 'FINISHED',
           winner,
-          finishedAt: new Date().toISOString()
+          finishedAt: new Date().toISOString(),
+          nftTransferStatus: winner === 'TIE' ? 'COMPLETED' : 'PENDING' // No transfer needed for ties
         });
+
+        // Trigger NFT transfer in background for non-tie games
+        if (winner !== 'TIE') {
+          // Don't await this - let it run in background
+          triggerNFTTransfer(matchId).catch((error: unknown) => {
+            console.error(`Background NFT transfer failed for match ${matchId}:`, error);
+          });
+        }
       } else {
         // Move to next question
         updatedMatch = await db.updateMatch(matchId, {

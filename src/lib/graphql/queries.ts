@@ -27,6 +27,13 @@ export const TOKEN_INFO_FRAGMENT = gql`
   }
 `;
 
+// Token withdrawal progress fragment
+export const TOKEN_WITHDRAW_PROGRESS_FRAGMENT = gql`
+  fragment TokenWithdrawProgress on Token {
+    id
+    isWithdrawInProgress
+  }
+`;
 
 // Main query to get user's tokens/NFTs from Dapper
 export const GET_TOKENS = gql`
@@ -61,6 +68,48 @@ export const GET_ACCOUNT = gql`
       username
       avatarID
       avatarURL
+    }
+  }
+`;
+
+// Get user's Flow account information
+export const GET_MY_FLOW_ACCOUNT = gql`
+  query GetMyFlowAccount {
+    getMyFlowAccount {
+      address
+      balance
+      isInitialized
+    }
+  }
+`;
+
+// Get public Flow account by address
+export const GET_FLOW_ACCOUNT = gql`
+  query GetFlowAccount($address: String!) {
+    getFlowAccount(address: $address) {
+      address
+      balance
+      isInitialized
+    }
+  }
+`;
+
+// Withdraw NFT Mutation
+export const WITHDRAW_NFT_MUTATION = gql`
+  mutation WithdrawNft($input: WithdrawNftInput!) {
+    withdrawNFT(input: $input) {
+      id
+      withdrawal {
+        id
+        tokenID
+        dappID
+        contractQualifiedName
+        destinationAddress
+        status
+        createdAt
+        completedAt
+        transactionHash
+      }
     }
   }
 `;
