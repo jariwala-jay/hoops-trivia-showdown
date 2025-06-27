@@ -20,17 +20,31 @@ export default function Home() {
         </div>
 
         {/* Game Modes */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-12">
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12">
+          {/* Quick Match */}
+          <Link href="/automatch" className="group">
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-8 text-center hover:bg-white/20 transition-all duration-300 border-2 border-white/20 hover:border-white/40 transform hover:scale-105 hover:shadow-2xl">
+              <div className="text-6xl mb-4 group-hover:animate-bounce">⚡</div>
+              <h2 className="text-2xl font-bold text-white mb-3">QUICK MATCH</h2>
+              <p className="text-orange-100 mb-6">
+                Get matched automatically with opponents of the same NFT rarity
+              </p>
+              <div className="bg-gradient-to-r from-purple-400 to-pink-500 text-white font-bold py-3 px-6 rounded-lg group-hover:from-purple-300 group-hover:to-pink-400 transition-all duration-200 transform group-hover:scale-110">
+                ⚡ FIND MATCH
+              </div>
+            </div>
+          </Link>
+
           {/* Create Match */}
           <Link href="/create" className="group">
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-8 text-center hover:bg-white/20 transition-all duration-300 border-2 border-white/20 hover:border-white/40 transform hover:scale-105 hover:shadow-2xl">
-              <div className="text-6xl mb-4 group-hover:animate-bounce">⚡</div>
+              <div className="text-6xl mb-4 group-hover:animate-bounce">🚀</div>
               <h2 className="text-2xl font-bold text-white mb-3">CREATE MATCH</h2>
               <p className="text-orange-100 mb-6">
                 Start a new trivia battle and wait for an opponent to challenge you
               </p>
               <div className="bg-gradient-to-r from-orange-400 to-red-500 text-white font-bold py-3 px-6 rounded-lg group-hover:from-orange-300 group-hover:to-red-400 transition-all duration-200 transform group-hover:scale-110">
-                🚀 CREATE GAME
+                🎯 CREATE GAME
               </div>
             </div>
           </Link>
@@ -38,7 +52,7 @@ export default function Home() {
           {/* Join Match */}
           <Link href="/join" className="group">
             <div className="bg-white/10 backdrop-blur-sm rounded-xl p-8 text-center hover:bg-white/20 transition-all duration-300 border-2 border-white/20 hover:border-white/40 transform hover:scale-105 hover:shadow-2xl">
-              <div className="text-6xl mb-4 group-hover:animate-bounce">🎯</div>
+              <div className="text-6xl mb-4 group-hover:animate-bounce">🔗</div>
               <h2 className="text-2xl font-bold text-white mb-3">JOIN MATCH</h2>
               <p className="text-orange-100 mb-6">
                 Enter a match ID and join an existing trivia battle

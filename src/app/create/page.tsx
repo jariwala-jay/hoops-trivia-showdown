@@ -6,7 +6,7 @@ import Link from 'next/link';
 import NFTSelector from '@/components/NFTSelector';
 import { NFT } from '@/types';
 import toast from 'react-hot-toast';
-
+import Image from 'next/image';
 export default function CreateMatchPage() {
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -99,10 +99,12 @@ export default function CreateMatchPage() {
               <h2 className="text-2xl font-bold text-white mb-4">Selected NFT</h2>
               <div className="flex items-center space-x-4">
                 <div className="w-24 h-32 relative rounded-lg overflow-hidden">
-                  <img
+                  <Image
                     src={selectedNFT.image}
                     alt={selectedNFT.name}
                     className="w-full h-full object-cover"
+                    width={100}
+                    height={100}
                   />
                 </div>
                 <div>

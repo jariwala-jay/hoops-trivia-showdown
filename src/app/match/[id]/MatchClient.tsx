@@ -1,43 +1,162 @@
 'use client';
 
 import Link from 'next/link';
-import useSWR from 'swr';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Match, Question } from '@/types';
+import Image from 'next/image';
 
 interface MatchClientProps {
   id: string;
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
-
 export default function MatchClient({ id }: MatchClientProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(24);
   const [hasAnswered, setHasAnswered] = useState<boolean>(false);
+  const [matchData, setMatchData] = useState<Match | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const [finishedMatchData, setFinishedMatchData] = useState<Match | null>(null); // Persist finished match data
+  
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const maxReconnectAttempts = 3;
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
-  // Fetch match data with smart polling
-  const { data, error, mutate } = useSWR(
-    id ? `/api/match/${id}` : null,
-    fetcher,
-    { 
-      refreshInterval: (data) => {
-        const match = data?.match;
-        // Fast polling during active gameplay, slower when waiting
-        if (match?.status === 'IN_PROGRESS') return 500; // 0.5 seconds during game
-        if (match?.status === 'READY') return 1000; // 1 second when ready to start
-        return 2000; // 2 seconds for pending/finished states
-      },
-      refreshWhenHidden: false,
-      refreshWhenOffline: false,
-      revalidateOnFocus: true,
-      dedupingInterval: 100, // Prevent duplicate requests
-      errorRetryInterval: 1000,
-      errorRetryCount: 3
+  // Function to fetch match data as fallback
+  const fetchMatchData = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/match/${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.match;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching match data:', error);
+      return null;
     }
-  );
+  }, [id]);
 
-  const match: Match | null = data?.match || null;
+  // SSE connection for real-time match updates
+  useEffect(() => {
+    if (!id) return;
+
+    const connectSSE = () => {
+      console.log(`[MATCH SSE] Connecting to match ${id} (attempt ${reconnectAttempts + 1})`);
+      setConnectionStatus('connecting');
+
+      // Close existing connection if any
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+
+      const eventSource = new EventSource(`/api/match/${id}/stream`);
+      eventSourceRef.current = eventSource;
+
+      eventSource.onopen = () => {
+        console.log('[MATCH SSE] Connection opened');
+        setConnectionStatus('connected');
+        setError(null);
+        setReconnectAttempts(0); // Reset reconnect attempts on successful connection
+      };
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('[MATCH SSE] Received:', data.type);
+
+          switch (data.type) {
+            case 'match_state':
+            case 'match_update':
+              setMatchData(data.match);
+              // If match is finished, persist the data
+              if (data.match.status === 'FINISHED') {
+                setFinishedMatchData(data.match);
+              }
+              break;
+            case 'match_finished':
+              setMatchData(data.match);
+              setFinishedMatchData(data.match); // Persist finished match data
+              console.log('[MATCH SSE] Match finished, data persisted');
+              break;
+            case 'match_deleted':
+              // Only show error if we don't have finished match data
+              if (!finishedMatchData) {
+                setError('Match no longer exists');
+              } else {
+                console.log('[MATCH SSE] Match deleted but we have finished data cached');
+              }
+              break;
+            case 'connected':
+              console.log('[MATCH SSE] Connected to match updates');
+              break;
+            case 'error':
+              setError(data.message || 'Connection error');
+              break;
+          }
+        } catch (err) {
+          console.error('[MATCH SSE] Error parsing message:', err);
+        }
+      };
+
+      eventSource.onerror = (event) => {
+        console.log('[MATCH SSE] Connection closed or error:', event);
+        setConnectionStatus('disconnected');
+        
+        if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+          eventSourceRef.current = null;
+        }
+
+        // Handle reconnection logic
+        setReconnectAttempts(currentAttempts => {
+          // Check if we should attempt reconnection
+          if (currentAttempts < maxReconnectAttempts) {
+            console.log('[MATCH SSE] Attempting to fetch match data as fallback');
+            fetchMatchData().then(fallbackMatch => {
+              if (fallbackMatch) {
+                setMatchData(fallbackMatch);
+                if (fallbackMatch.status === 'FINISHED') {
+                  setFinishedMatchData(fallbackMatch);
+                  console.log('[MATCH SSE] Match finished, no reconnection needed');
+                  return; // Don't reconnect if match is finished
+                }
+              }
+              
+              // Schedule reconnection if match is not finished
+              reconnectTimeoutRef.current = setTimeout(() => {
+                connectSSE();
+              }, 2000 * (currentAttempts + 1)); // Exponential backoff
+            });
+            
+            return currentAttempts + 1;
+          } else {
+            setError('Connection lost. Please refresh the page.');
+            return currentAttempts;
+          }
+        });
+      };
+    };
+
+    // Initial connection
+    connectSSE();
+
+    // Cleanup on unmount
+    return () => {
+      console.log('[MATCH SSE] Cleaning up connection');
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
+  }, [id, fetchMatchData]); // Include memoized fetchMatchData
+
+  // Use finished match data if available, otherwise use current match data
+  const match: Match | null = finishedMatchData || matchData;
   const currentQuestion: Question | null = match?.questions[match?.currentQuestionIndex] || null;
 
   // Timer for current question
@@ -48,8 +167,20 @@ export default function MatchClient({ id }: MatchClientProps) {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             setHasAnswered(true);
-            // Auto-submit when time runs out
-            submitAnswer(-1, 0); // -1 indicates no answer selected
+            // Auto-submit when time runs out - call directly to avoid dependency issues
+            fetch('/api/match/answer', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                matchId: id,
+                questionId: currentQuestion?.id,
+                selectedOption: -1,
+                timeRemaining: 0
+              })
+            }).catch(error => {
+              console.error('Error submitting timeout answer:', error);
+              setHasAnswered(false);
+            });
             return 0;
           }
           return prev - 1;
@@ -58,7 +189,7 @@ export default function MatchClient({ id }: MatchClientProps) {
 
       return () => clearInterval(timer);
     }
-  }, [match?.currentQuestionIndex, hasAnswered, currentQuestion]);
+  }, [match?.currentQuestionIndex, hasAnswered, currentQuestion, match?.status, id]);
 
   // Reset answer state when question changes
   useEffect(() => {
@@ -71,9 +202,6 @@ export default function MatchClient({ id }: MatchClientProps) {
 
   const startGame = async () => {
     try {
-      // Optimistic UI update
-      mutate();
-      
       const response = await fetch('/api/match/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -81,13 +209,18 @@ export default function MatchClient({ id }: MatchClientProps) {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to start game');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Start game failed:', response.status, errorData);
+        throw new Error(errorData.error || `Failed to start game (${response.status})`);
       }
       
-      // Force immediate refresh
-      mutate();
+      const result = await response.json();
+      console.log('Game started successfully:', result);
+      
+      // Match updates will come via SSE
     } catch (error) {
       console.error('Error starting game:', error);
+      setError(error instanceof Error ? error.message : 'Failed to start game');
     }
   };
 
@@ -95,9 +228,6 @@ export default function MatchClient({ id }: MatchClientProps) {
     if (hasAnswered && answerIndex !== -1) return; // Allow auto-submit on timeout
     
     setHasAnswered(true);
-    
-    // Immediate optimistic update
-    mutate();
     
     try {
       const response = await fetch('/api/match/answer', {
@@ -115,8 +245,7 @@ export default function MatchClient({ id }: MatchClientProps) {
         throw new Error('Failed to submit answer');
       }
       
-      // Force refresh after successful submission
-      mutate();
+      // Match updates will come via SSE
     } catch (error) {
       console.error('Error submitting answer:', error);
       // Reset state on error
@@ -147,15 +276,23 @@ export default function MatchClient({ id }: MatchClientProps) {
     ((answerStatus.playerA > 0 && answerStatus.playerB === 0) || 
      (answerStatus.playerA === 0 && answerStatus.playerB > 0));
 
-  if (error) {
+  if (error && !finishedMatchData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center">
         <div className="text-center text-white">
-          <h1 className="text-4xl font-bold mb-4">Match Not Found</h1>
-          <p className="text-xl mb-8">The match you&apos;re looking for doesn&apos;t exist.</p>
-          <Link href="/" className="bg-white text-red-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100">
-            Back to Home
-          </Link>
+          <h1 className="text-4xl font-bold mb-4">Match Error</h1>
+          <p className="text-xl mb-8">{error}</p>
+          <div className="space-x-4">
+            <button 
+              onClick={() => window.location.reload()} 
+              className="bg-white text-red-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100"
+            >
+              Refresh Page
+            </button>
+            <Link href="/" className="bg-white text-red-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100">
+              Back to Home
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -167,6 +304,18 @@ export default function MatchClient({ id }: MatchClientProps) {
         <div className="text-white text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
           <p className="text-xl">Loading match...</p>
+          <div className="mt-4 flex items-center justify-center space-x-2">
+            <div className={`w-3 h-3 rounded-full ${
+              connectionStatus === 'connected' ? 'bg-green-400' : 
+              connectionStatus === 'connecting' ? 'bg-yellow-400' : 'bg-red-400'
+            }`}></div>
+            <span className="text-sm text-white/80 capitalize">{connectionStatus}</span>
+            {reconnectAttempts > 0 && (
+              <span className="text-sm text-white/60">
+                (Reconnect attempt {reconnectAttempts}/{maxReconnectAttempts})
+              </span>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -228,12 +377,14 @@ export default function MatchClient({ id }: MatchClientProps) {
             <div className="grid md:grid-cols-2 gap-8 mb-8">
               <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white">
                 <h2 className="text-2xl font-bold mb-4">{match.playerA.name}</h2>
-                <div className="w-32 h-40 mx-auto mb-4 rounded-lg overflow-hidden">
-                  <img
-                    src={match.nftA.image}
-                    alt={match.nftA.name}
-                    className="w-full h-full object-cover"
-                  />
+                                  <div className="w-32 h-40 mx-auto mb-4 rounded-lg overflow-hidden">
+                    <Image
+                      src={match.nftA.image}
+                      alt={match.nftA.name}
+                      className="w-full h-full object-cover"
+                      width={100}
+                      height={100}
+                    />
                 </div>
                 <p>{match.nftA.name}</p>
               </div>
@@ -241,12 +392,14 @@ export default function MatchClient({ id }: MatchClientProps) {
               {match.playerB && (
                 <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white">
                   <h2 className="text-2xl font-bold mb-4">{match.playerB.name}</h2>
-                  <div className="w-32 h-40 mx-auto mb-4 rounded-lg overflow-hidden">
-                    <img
-                      src={match.nftB!.image}
-                      alt={match.nftB!.name}
-                      className="w-full h-full object-cover"
-                    />
+                                      <div className="w-32 h-40 mx-auto mb-4 rounded-lg overflow-hidden">
+                      <Image
+                        src={match.nftB!.image}
+                        alt={match.nftB!.name}
+                        className="w-full h-full object-cover"
+                        width={100}
+                        height={100}
+                      />
                   </div>
                   <p>{match.nftB!.name}</p>
                 </div>
@@ -354,7 +507,7 @@ export default function MatchClient({ id }: MatchClientProps) {
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-6xl font-bold text-white mb-8">
-              {match.winner === 'TIE' ? 'It&apos;s a Tie!' : 'Game Over!'}
+              {match.winner === 'TIE' ? 'It\'s a Tie!' : 'Game Over!'}
             </h1>
             
             {winner && (
@@ -373,10 +526,12 @@ export default function MatchClient({ id }: MatchClientProps) {
                 <h3 className="text-2xl font-bold mb-4">{match.playerA.name}</h3>
                 <div className="text-4xl font-bold text-orange-400 mb-4">{match.scoreA}</div>
                 <div className="w-32 h-40 mx-auto rounded-lg overflow-hidden">
-                  <img
+                  <Image
                     src={match.nftA.image}
                     alt={match.nftA.name}
                     className="w-full h-full object-cover"
+                    width={100}
+                    height={100}
                   />
                 </div>
                 <p className="mt-2">{match.nftA.name}</p>
@@ -386,10 +541,12 @@ export default function MatchClient({ id }: MatchClientProps) {
                 <h3 className="text-2xl font-bold mb-4">{match.playerB?.name}</h3>
                 <div className="text-4xl font-bold text-blue-400 mb-4">{match.scoreB}</div>
                 <div className="w-32 h-40 mx-auto rounded-lg overflow-hidden">
-                  <img
+                  <Image
                     src={match.nftB!.image}
                     alt={match.nftB!.name}
                     className="w-full h-full object-cover"
+                    width={100}
+                    height={100}
                   />
                 </div>
                 <p className="mt-2">{match.nftB!.name}</p>
@@ -402,6 +559,13 @@ export default function MatchClient({ id }: MatchClientProps) {
             >
               Play Again
             </Link>
+            
+            {/* Show connection status for debugging */}
+            {connectionStatus === 'disconnected' && (
+              <div className="mt-4 text-white/60 text-sm">
+                Connection closed (match finished)
+              </div>
+            )}
           </div>
         </div>
       </div>

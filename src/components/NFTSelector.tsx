@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { NFT } from '@/types';
 import { MOCK_NFTS } from '@/lib/mockData';
 import { useUserMoments } from '@/hooks/useUserMoments';
+import Image from 'next/image';
 
 interface NFTSelectorProps {
   selectedNFT: NFT | null;
@@ -126,10 +127,12 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
           >
             {/* NFT Image */}
             <div className="aspect-[3/4] relative">
-              <img
+              <Image
                 src={nft.image}
                 alt={nft.name}
                 className="w-full h-full object-cover"
+                width={100}
+                height={100}
               />
               
               {/* Selection Overlay */}
