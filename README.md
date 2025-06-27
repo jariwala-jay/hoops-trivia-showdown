@@ -174,21 +174,18 @@ npm run start
 - [x] Scoring system
 
 ### Phase 2: Authentication & Real Data
-- [ ] Auth0 integration
-- [ ] Real NFT data from GraphQL
-- [ ] User profiles and history
+- [x] Auth0 integration
+- [x] Real NFT data from GraphQL
 
 ### Phase 3: Enhanced Experience
+- [ ] Improve Graphic and UI
 - [ ] AI-generated questions via n8n
 - [ ] Animations and sound effects
-- [ ] Tournament brackets
-- [ ] Leaderboards
+
 
 ### Phase 4: Advanced Features
-- [ ] Mobile app
-- [ ] Live streaming integration
 - [ ] Social features
-- [ ] Marketplace integration
+- [ ] Leaderboards
 
 ## 🤝 Contributing
 
