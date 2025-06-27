@@ -8,16 +8,6 @@ interface AccessToken {
 
 export async function GET(): Promise<NextResponse> {
   try {
-    // Get the session first to check if user is authenticated
-    const session = await auth0.getSession();
-    
-    if (!session) {
-      console.log('No session found - user not authenticated');
-      return NextResponse.json(null, { status: 401 });
-    }
-
-    console.log('Session found, user:', session.user?.email || session.user?.name);
-
     // Get access token using our configured Auth0 client
     const { token: accessToken } = await auth0.getAccessToken();
     

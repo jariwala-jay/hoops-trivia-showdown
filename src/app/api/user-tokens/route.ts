@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth0 } from '@/lib/auth0';
 
 export type AccessToken = {
   accessToken: string | undefined;
 };
 
-
 export async function GET(request: NextRequest) {
   try {
-    // Check if user is logged in first
-    const sessionCookie = request.cookies.get('auth0_session');
-    
-    if (!sessionCookie?.value) {
+    // Get the authenticated user's session (same as working routes)
+    const session = await auth0.getSession();
+    if (!session) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
