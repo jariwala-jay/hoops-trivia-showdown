@@ -7,10 +7,12 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Only match the auth-related API routes
+    // Match both custom auth routes and standard Auth0 routes
     '/api/login',
     '/api/logout', 
     '/api/callback',
     '/api/access-token',
+    '/api/auth/:path*',  // Handle all /api/auth/* routes
+    '/auth/:path*',      // Handle all /auth/* routes (without /api/)
   ],
 }; 

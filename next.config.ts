@@ -10,7 +10,8 @@ const nextConfig: NextConfig = {
       'assets.nbatopshot.com',
       'cdn.dapperlabs.com',
       'ipfs.io',
-      'gateway.pinata.cloud'
+      'gateway.pinata.cloud',
+      'media.nbatopshot.com'
     ],
   },
 };

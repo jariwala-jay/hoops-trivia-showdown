@@ -6,6 +6,7 @@ import Link from 'next/link';
 import NFTSelector from '@/components/NFTSelector';
 import { NFT } from '@/types';
 import Image from 'next/image';
+import { useUserMoments } from '@/hooks/useUserMoments';
 export default function AutomatchPage() {
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -15,9 +16,13 @@ export default function AutomatchPage() {
   const [matchFound, setMatchFound] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const router = useRouter();
+  const { flowAddress, isLoading: momentsLoading } = useUserMoments();
   
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+
+  console.log('Automatch page - Flow address:', flowAddress);
+  console.log('Automatch page - Moments loading:', momentsLoading);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -53,6 +58,13 @@ export default function AutomatchPage() {
   const startAutomatch = async () => {
     if (!selectedNFT) return;
 
+    console.log('Starting automatch with Flow address:', flowAddress);
+
+    if (!flowAddress) {
+      setError('Flow address not available. Please try again.');
+      return;
+    }
+
     setIsSearching(true);
     setError(null);
     setTimeRemaining(20);
@@ -68,7 +80,8 @@ export default function AutomatchPage() {
       // Create SSE connection
       const nftParam = encodeURIComponent(JSON.stringify(selectedNFT));
       const rarityParam = encodeURIComponent(selectedNFT.rarity || 'Common');
-      const eventSource = new EventSource(`/api/match/automatch/stream?nft=${nftParam}&rarity=${rarityParam}`);
+      const flowAddressParam = encodeURIComponent(flowAddress);
+      const eventSource = new EventSource(`/api/match/automatch/stream?nft=${nftParam}&rarity=${rarityParam}&flowAddress=${flowAddressParam}`);
       
       eventSourceRef.current = eventSource;
 
@@ -326,9 +339,9 @@ export default function AutomatchPage() {
               <div className="text-center">
                 <button
                   onClick={startAutomatch}
-                  disabled={!selectedNFT}
+                  disabled={!selectedNFT || momentsLoading || !flowAddress}
                   className={`px-8 py-4 rounded-xl font-bold text-xl transition-all duration-200 ${
-                    !selectedNFT
+                    !selectedNFT || momentsLoading || !flowAddress
                       ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
                       : 'bg-purple-500 text-white hover:bg-purple-400 transform hover:scale-105 shadow-lg hover:shadow-xl'
                   }`}
@@ -336,7 +349,17 @@ export default function AutomatchPage() {
                   ⚡ Find Quick Match
                 </button>
                 
-                {!selectedNFT && (
+                {momentsLoading && (
+                  <p className="text-purple-200 mt-4">
+                    Loading your Flow address...
+                  </p>
+                )}
+                {!momentsLoading && !flowAddress && (
+                  <p className="text-purple-200 mt-4">
+                    Flow address not available. Please refresh the page.
+                  </p>
+                )}
+                {!selectedNFT && flowAddress && !momentsLoading && (
                   <p className="text-purple-200 mt-4">
                     Select an NFT to start matchmaking
                   </p>

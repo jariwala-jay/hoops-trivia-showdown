@@ -23,6 +23,7 @@ export interface NFT {
   contract?: string;
   dappID?: string;
   serialNumber?: number;
+  isWithdrawInProgress?: boolean;
 }
 
 export interface PlayerAnswer {
@@ -90,7 +91,7 @@ export interface TokenResponse {
 }
 
 // NFT Transfer Types
-export interface WithdrawNftInput {
+export interface WithdrawNFTInput {
   contractQualifiedName?: string;
   dappID: string;
   destinationAddress: string;
@@ -103,7 +104,7 @@ export interface NftWithdrawal {
   dappID: string;
   contractQualifiedName?: string;
   destinationAddress: string;
-  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+  state: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
   createdAt: string;
   completedAt?: string;
   transactionHash?: string;

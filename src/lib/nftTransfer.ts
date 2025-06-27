@@ -1,5 +1,5 @@
-import { Match, Player, NFT, WithdrawNftInput, WithdrawNftResponse, NFTTransferOperation, FlowAccount } from '@/types';
-import { WITHDRAW_NFT_MUTATION, GET_MY_FLOW_ACCOUNT, GET_FLOW_ACCOUNT } from './graphql/queries';
+import { Match, Player, NFT, WithdrawNftResponse, NFTTransferOperation, FlowAccount } from '@/types';
+import { GET_MY_FLOW_ACCOUNT, GET_FLOW_ACCOUNT } from './graphql/queries';
 
 // Types for the transfer context
 interface TransferContext {
@@ -69,33 +69,44 @@ export class NFTTransferService {
     error?: string;
   }> {
     try {
-      console.log(`Starting NFT transfer process for match ${match.id}`);
+      console.log(`Starting NFT transfer process for match ${match.id}, winner: ${match.winner}`);
       
       // Determine what transfers need to happen
       const transferPlan = this.createTransferPlan(match);
+      console.log(`Transfer plan created: ${transferPlan.length} transfers needed`);
       
       if (transferPlan.length === 0) {
+        console.log('No transfers needed - returning success');
         return { success: true, operations: [] };
       }
 
       // Get Flow addresses for all players
+      console.log('Getting Flow addresses for players...');
       const playersWithAddresses = await this.getPlayersFlowAddresses(match);
+      console.log(`Flow addresses obtained - PlayerA: ${playersWithAddresses.playerA.flowAddress}, PlayerB: ${playersWithAddresses.playerB?.flowAddress}`);
       
       // Execute all transfers
       const operations: NFTTransferOperation[] = [];
       
       for (const plan of transferPlan) {
+        console.log(`Executing transfer: ${plan.nft.name} from ${plan.fromPlayer} to ${plan.toPlayer}`);
         const operation = await this.executeTransfer(plan, playersWithAddresses, match);
         operations.push(operation);
+        console.log(`Transfer operation completed with status: ${operation.status}`);
       }
 
-      // Check if all transfers were successful
-      const allSuccessful = operations.every(op => op.status === 'COMPLETED');
+      // Check if all transfers were initiated successfully (COMPLETED or IN_PROGRESS are both success)
+      const allSuccessful = operations.every(op => 
+        op.status === 'COMPLETED' || op.status === 'IN_PROGRESS'
+      );
+      
+      console.log(`All transfers completed. Success: ${allSuccessful}`);
+      console.log('Transfer statuses:', operations.map(op => `${op.nftId}: ${op.status}`));
       
       return {
         success: allSuccessful,
         operations,
-        error: allSuccessful ? undefined : 'Some transfers failed'
+        error: allSuccessful ? undefined : 'Some transfers failed to initiate'
       };
 
     } catch (error) {
@@ -162,27 +173,29 @@ export class NFTTransferService {
     playerA: PlayerWithFlowAddress;
     playerB?: PlayerWithFlowAddress;
   }> {
+    console.log('Match PlayerA stored flow address:', match.playerA.flowAddress);
+    console.log('Match PlayerB stored flow address:', match.playerB?.flowAddress);
+    
+    // Validate that Flow addresses are available
+    if (!match.playerA.flowAddress) {
+      throw new Error('Player A Flow address is not available');
+    }
+    
+    if (!match.playerB?.flowAddress) {
+      throw new Error('Player B Flow address is not available');
+    }
+
+    // Validate addresses are different
+    if (match.playerA.flowAddress === match.playerB.flowAddress) {
+      throw new Error('Players cannot have the same Flow address');
+    }
+
     const players: { playerA: PlayerWithFlowAddress; playerB?: PlayerWithFlowAddress } = {
-      playerA: { ...match.playerA, flowAddress: '' }
+      playerA: { ...match.playerA, flowAddress: match.playerA.flowAddress },
+      playerB: match.playerB ? { ...match.playerB, flowAddress: match.playerB.flowAddress } : undefined
     };
 
-    // Get Flow address for Player A
-    try {
-      const flowAccountA = await this.getFlowAddressForPlayer(match.playerA);
-      players.playerA.flowAddress = flowAccountA.address;
-    } catch (error) {
-      throw new Error(`Failed to get Flow address for Player A: ${error}`);
-    }
-
-    // Get Flow address for Player B if exists
-    if (match.playerB) {
-      try {
-        const flowAccountB = await this.getFlowAddressForPlayer(match.playerB);
-        players.playerB = { ...match.playerB, flowAddress: flowAccountB.address };
-      } catch (error) {
-        throw new Error(`Failed to get Flow address for Player B: ${error}`);
-      }
-    }
+    console.log('Using stored Flow addresses - PlayerA:', players.playerA.flowAddress, 'PlayerB:', players.playerB?.flowAddress);
 
     return players;
   }
@@ -194,12 +207,16 @@ export class NFTTransferService {
     // If player already has flow address cached, validate it
     if (player.flowAddress) {
       try {
-        const account = await this.client.query<{ getFlowAccount: FlowAccount }>(
+        const account = await this.client.query<{ getFlowAccount: string }>(
           GET_FLOW_ACCOUNT.loc?.source.body || '',
           { address: player.flowAddress }
         );
         if (account.getFlowAccount) {
-          return account.getFlowAccount;
+          return {
+            address: account.getFlowAccount,
+            balance: 0,
+            isInitialized: true
+          };
         }
       } catch (error) {
         console.warn(`Cached flow address invalid for player ${player.id}:`, error);
@@ -207,13 +224,31 @@ export class NFTTransferService {
     }
 
     // Get the current user's flow account (this assumes the service is called with the right auth context)
-    const result = await this.client.query<{ getMyFlowAccount: FlowAccount }>(GET_MY_FLOW_ACCOUNT.loc?.source.body || '');
-    
-    if (!result.getMyFlowAccount) {
-      throw new Error(`No Flow account found for player ${player.name}`);
-    }
+    try {
+      const result = await this.client.query<{ getMyFlowAccount: string }>(GET_MY_FLOW_ACCOUNT.loc?.source.body || '');
+      
+      if (!result.getMyFlowAccount) {
+        throw new Error(`No Flow account found for player ${player.name}`);
+      }
 
-    return result.getMyFlowAccount;
+      return {
+        address: result.getMyFlowAccount,
+        balance: 0,
+        isInitialized: true
+      };
+    } catch (error) {
+      // For server-side operations, we might not have proper auth context
+      // In this case, we'll create a mock Flow account for testing
+      console.warn(`Could not get Flow account for player ${player.name}, using mock address:`, error);
+      
+      // Return a mock Flow account for development/testing
+      // In production, this should be replaced with proper multi-user Flow address resolution
+      return {
+        address: `0x${player.id.replace(/-/g, '').substring(0, 16)}`, // Generate a mock address from player ID
+        balance: 0,
+        isInitialized: true
+      };
+    }
   }
 
   /**
@@ -230,7 +265,7 @@ export class NFTTransferService {
       fromPlayer: transferPlan.fromPlayer,
       toPlayer: transferPlan.toPlayer,
       nftId: transferPlan.nft.id,
-      nftTokenId: transferPlan.nft.serialNumber || parseInt(transferPlan.nft.id),
+      nftTokenId: parseInt(transferPlan.nft.id) || 0, // Use the NFT ID as the token ID
       fromAddress: transferPlan.fromPlayer === 'A' ? players.playerA.flowAddress : players.playerB!.flowAddress,
       toAddress: transferPlan.toPlayer === 'A' ? players.playerA.flowAddress : players.playerB!.flowAddress,
       status: 'PENDING',
@@ -240,34 +275,82 @@ export class NFTTransferService {
       updatedAt: new Date().toISOString()
     };
 
+    // Validate the operation before attempting transfer
+    if (operation.nftTokenId === 0 || isNaN(operation.nftTokenId)) {
+      operation.status = 'FAILED';
+      operation.error = `Invalid token ID: ${operation.nftTokenId}. NFT ID: ${transferPlan.nft.id} (should be numeric), Serial: ${transferPlan.nft.serialNumber}`;
+      console.error(operation.error);
+      return operation;
+    }
+
+    if (!transferPlan.nft.dappID) {
+      console.warn(`Missing dappID for NFT ${transferPlan.nft.id}, using fallback NBA Top Shot dappID`);
+      console.error('Full NFT data:', JSON.stringify(transferPlan.nft, null, 2));
+      
+      // Use fallback dappID for NBA Top Shot
+      transferPlan.nft.dappID = 'ad3260ba-a87c-4359-a8b0-def2cc36310b';
+      console.log('Applied fallback dappID:', transferPlan.nft.dappID);
+    }
+
+    console.log(`Starting transfer for NFT ${transferPlan.nft.id} (Token ID: ${operation.nftTokenId}) from ${operation.fromAddress} to ${operation.toAddress}`);
+
     // Execute transfer with retries
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       operation.attempts = attempt;
       operation.updatedAt = new Date().toISOString();
 
       try {
-        console.log(`Transfer attempt ${attempt}/${this.maxRetries} for NFT ${transferPlan.nft.id}`);
+        console.log(`Transfer attempt ${attempt}/${this.maxRetries} for NFT ${transferPlan.nft.id} (Token ID: ${operation.nftTokenId})`);
         
         operation.status = 'IN_PROGRESS';
         
-        const withdrawInput: WithdrawNftInput = {
-          dappID: transferPlan.nft.dappID || 'nba-top-shot', // Default to NBA Top Shot
+        const withdrawInput = {
+          tokenID: operation.nftTokenId.toString(),
           destinationAddress: operation.toAddress,
-          tokenID: operation.nftTokenId,
-          contractQualifiedName: transferPlan.nft.contract || 'A.877931736ee77cff.TopShot'
+          dappID: transferPlan.nft.dappID!
         };
 
-        const result = await this.client.mutate<{ withdrawNFT: WithdrawNftResponse }>(
-          WITHDRAW_NFT_MUTATION.loc?.source.body || '',
-          { input: withdrawInput }
-        );
+        console.log('Withdraw input:', JSON.stringify(withdrawInput, null, 2));
 
-        if (result.withdrawNFT) {
+        // Use the working GraphQL mutation from our test
+        const result = await this.client.mutate<{ withdrawNFT: WithdrawNftResponse }>(`
+          mutation WithdrawNFT($input: WithdrawNFTInput!) {
+            withdrawNFT(input: $input) {
+              id
+              withdrawal {
+                id
+                state
+                contractQualifiedName
+                destinationAddress
+                sourceAddress
+                tokenID
+                txnHash
+                createdAt
+                dappID
+              }
+            }
+          }
+        `, { input: withdrawInput });
+
+        if (result?.withdrawNFT) {
           operation.withdrawalId = result.withdrawNFT.id;
-          operation.status = 'COMPLETED';
-          operation.transactionHash = result.withdrawNFT.withdrawal.transactionHash;
+          const withdrawalState = String(result.withdrawNFT.withdrawal.state);
           
-          console.log(`NFT transfer completed successfully: ${operation.withdrawalId}`);
+          // Update status based on withdrawal state
+          if (['REQUESTED', 'PROCESSING', 'PENDING'].includes(withdrawalState)) {
+            operation.status = 'IN_PROGRESS';
+          } else if (withdrawalState === 'COMPLETED') {
+            operation.status = 'COMPLETED';
+          } else if (withdrawalState === 'FAILED') {
+            operation.status = 'FAILED';
+            operation.error = 'Withdrawal failed on Dapper side';
+          }
+          
+          // Try to get transaction hash from the response
+          const withdrawal = result.withdrawNFT.withdrawal as unknown as Record<string, unknown>;
+          operation.transactionHash = (withdrawal.txnHash as string) || undefined;
+          
+          console.log(`NFT transfer initiated successfully: ${operation.withdrawalId}, state: ${withdrawalState}`);
           break;
         } else {
           throw new Error('No withdrawal response received');
@@ -309,8 +392,8 @@ export class NFTTransferService {
       return { valid: false, error: 'Source and destination addresses are the same' };
     }
 
-    if (!nft.id || (!nft.serialNumber && !parseInt(nft.id))) {
-      return { valid: false, error: 'Invalid NFT token ID' };
+    if (!nft.id || isNaN(parseInt(nft.id))) {
+      return { valid: false, error: 'Invalid NFT token ID - must be numeric' };
     }
 
     // Additional validations could be added here:
@@ -325,20 +408,41 @@ export class NFTTransferService {
 /**
  * Factory function to create NFT transfer service with proper context
  */
-export async function createNFTTransferService(): Promise<NFTTransferService> {
-  // Get access token from the API
-  const tokenResponse = await fetch('/api/access-token');
-  if (!tokenResponse.ok) {
-    throw new Error('Failed to get access token for NFT transfer');
-  }
-  
-  const tokenData = await tokenResponse.json();
-  if (!tokenData.accessToken) {
-    throw new Error('No access token available for NFT transfer');
+export async function createNFTTransferService(serverSideContext?: { 
+  accessToken?: string;
+  cookies?: string;
+}): Promise<NFTTransferService> {
+  let accessToken: string;
+
+  if (serverSideContext?.accessToken) {
+    // Use provided access token (for server-side calls)
+    accessToken = serverSideContext.accessToken;
+  } else {
+    // Get access token from the API (for client-side calls)
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add cookies if provided (for server-side calls with cookie context)
+    if (serverSideContext?.cookies) {
+      headers['Cookie'] = serverSideContext.cookies;
+    }
+
+    const tokenResponse = await fetch('/api/access-token', { headers });
+    if (!tokenResponse.ok) {
+      throw new Error('Failed to get access token for NFT transfer');
+    }
+    
+    const tokenData = await tokenResponse.json();
+    if (!tokenData.accessToken) {
+      throw new Error('No access token available for NFT transfer');
+    }
+
+    accessToken = tokenData.accessToken;
   }
 
   const context: TransferContext = {
-    accessToken: tokenData.accessToken,
+    accessToken,
     graphqlEndpoint: 'https://staging.accounts.meetdapper.com/graphql'
   };
 
@@ -348,13 +452,16 @@ export async function createNFTTransferService(): Promise<NFTTransferService> {
 /**
  * Convenience function to handle match finish and trigger transfers
  */
-export async function handleMatchFinishTransfers(match: Match): Promise<{
+export async function handleMatchFinishTransfers(
+  match: Match, 
+  serverSideContext?: { accessToken?: string; cookies?: string }
+): Promise<{
   success: boolean;
   operations: NFTTransferOperation[];
   error?: string;
 }> {
   try {
-    const transferService = await createNFTTransferService();
+    const transferService = await createNFTTransferService(serverSideContext);
     return await transferService.handleMatchFinishTransfer(match);
   } catch (error) {
     console.error('Error creating NFT transfer service:', error);

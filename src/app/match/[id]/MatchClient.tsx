@@ -15,22 +15,32 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
   const [transferStatus, setTransferStatus] = useState<string | null>(null);
   const [transferError, setTransferError] = useState<string | null>(null);
 
-  // Check transfer status on load
+  // Set transfer status from match data
   useEffect(() => {
     if (match.winner !== 'TIE') {
-      checkTransferStatus();
+      setTransferStatus(match.nftTransferStatus || 'PENDING');
+      setTransferError(match.nftTransferError || null);
     }
-  }, [match.id, match.winner]);
+  }, [match.nftTransferStatus, match.nftTransferError, match.winner]);
+
+  // Periodically check for transfer completion when IN_PROGRESS
+  useEffect(() => {
+    if (transferStatus === 'IN_PROGRESS') {
+      const interval = setInterval(() => {
+        checkTransferStatus();
+      }, 30000); // Check every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [transferStatus]);
 
   const checkTransferStatus = async () => {
     try {
       const response = await fetch(`/api/match/transfer-nft?matchId=${match.id}`);
       if (response.ok) {
         const data = await response.json();
-        setTransferStatus(data.transferStatus);
-        if (data.transferError) {
-          setTransferError(data.transferError);
-        }
+        // This will be updated via SSE, but we can show immediate feedback
+        console.log('Transfer status check:', data);
       }
     } catch (error) {
       console.error('Error checking transfer status:', error);
@@ -85,10 +95,20 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
       case 'COMPLETED':
         return (
           <div className="mb-8">
-            <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4">
-              <div className="flex items-center justify-center space-x-2">
-                <div className="text-green-400">✅</div>
-                <span className="text-green-200">NFT transfer completed successfully!</span>
+            <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-lg p-6">
+              <div className="text-center">
+                <div className="flex items-center justify-center space-x-3 mb-3">
+                  <div className="text-green-400 text-2xl">🎊</div>
+                  <span className="text-green-200 text-lg font-semibold">NFT Transfer Complete!</span>
+                </div>
+                <p className="text-green-300 text-base mb-2">
+                  Your NFT has been successfully transferred on the Flow blockchain.
+                </p>
+                <div className="mt-4 bg-green-500/10 rounded-lg p-3">
+                  <p className="text-green-200 text-sm">
+                    🎉 <strong>Success!</strong> Check your Dapper wallet to see your new NFT collection!
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -97,10 +117,23 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
       case 'IN_PROGRESS':
         return (
           <div className="mb-8">
-            <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4">
-              <div className="flex items-center justify-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
-                <span className="text-yellow-200">Transferring NFTs...</span>
+            <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-lg p-6">
+              <div className="text-center">
+                <div className="flex items-center justify-center space-x-3 mb-3">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
+                  <span className="text-blue-200 text-lg font-semibold">🎉 NFT Transfer In Progress!</span>
+                </div>
+                <p className="text-blue-300 text-base mb-2">
+                  Your NFT is being transferred on the Flow blockchain. This typically takes a few minutes to complete.
+                </p>
+                <p className="text-blue-300 text-sm">
+                  ✅ You can safely leave this page - the transfer will continue in the background.
+                </p>
+                <div className="mt-4 bg-blue-500/10 rounded-lg p-3">
+                  <p className="text-blue-200 text-sm">
+                    💡 <strong>Pro tip:</strong> Check your Dapper wallet in a few minutes to see your new NFT!
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -138,17 +171,26 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
               <div className="text-center">
                 <div className="flex items-center justify-center space-x-2 mb-2">
                   <div className="text-orange-400">⏳</div>
-                  <span className="text-orange-200">NFT transfer pending...</span>
+                  <span className="text-orange-200">Preparing NFT transfer...</span>
                 </div>
                 <p className="text-orange-300 text-sm mb-3">
-                  The system is preparing to transfer the NFTs. This may take a few moments.
+                  The system is setting up the NFT transfer. This should begin shortly.
                 </p>
-                <button
-                  onClick={checkTransferStatus}
-                  className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-400"
-                >
-                  Check Status
-                </button>
+                <div className="space-x-2">
+                  <button
+                    onClick={checkTransferStatus}
+                    className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-400"
+                  >
+                    Refresh Status
+                  </button>
+                  <button
+                    onClick={handleRetryTransfer}
+                    disabled={isTransferring}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-400 disabled:opacity-50"
+                  >
+                    {isTransferring ? 'Starting Transfer...' : 'Retry Transfer'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -159,69 +201,152 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-500 to-orange-600">
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-6xl font-bold text-white mb-8">
-            {match.winner === 'TIE' ? 'It&apos;s a Tie!' : 'Game Over!'}
-          </h1>
-          
-          {winner && (
-            <div className="mb-8">
-              <h2 className="text-4xl font-bold text-white mb-4">
-                🏆 {winner.name} Wins!
-              </h2>
-              <p className="text-xl text-white/80">
-                Congratulations! You win both NFTs!
-              </p>
+        <div className="max-w-6xl mx-auto">
+          {/* Victory Header */}
+          <div className="text-center mb-8">
+            <div className="animate-bounce mb-4">
+              {match.winner === 'TIE' ? '🤝' : '🏆'}
             </div>
-          )}
+            <h1 className="text-6xl font-bold text-white mb-4">
+              {match.winner === 'TIE' ? 'It&apos;s a Tie!' : 'Game Over!'}
+            </h1>
+            
+            {winner && (
+              <div className="mb-6">
+                <h2 className="text-4xl font-bold text-white mb-2">
+                  🎉 {winner.name} Wins!
+                </h2>
+                <p className="text-xl text-white/80">
+                  Congratulations! You win both NFTs!
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* NFT Transfer Status */}
           {renderTransferStatus()}
           
+          {/* Match Results */}
           <div className="grid md:grid-cols-2 gap-8 mb-8">
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white">
-              <h3 className="text-2xl font-bold mb-4">{match.playerA.name}</h3>
-              <div className="text-4xl font-bold text-orange-400 mb-4">{match.scoreA}</div>
-              <div className="w-32 h-40 mx-auto rounded-lg overflow-hidden">
-                <img
-                  src={match.nftA.image}
-                  alt={match.nftA.name}
-                  className="w-full h-full object-cover"
-                />
+            <div className={`bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white border-2 ${
+              match.winner === 'A' ? 'border-yellow-400 bg-yellow-500/10' : 'border-white/20'
+            }`}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold">{match.playerA.name}</h3>
+                {match.winner === 'A' && <div className="text-2xl">👑</div>}
               </div>
-              <p className="mt-2">{match.nftA.name}</p>
-              {match.winner === 'B' && transferStatus === 'COMPLETED' && (
-                <div className="mt-2 text-red-400 text-sm">
-                  ➡️ Transferred to {match.playerB?.name}
+              <div className="text-5xl font-bold text-orange-400 mb-6">{match.scoreA}</div>
+              <div className="relative">
+                <div className="w-40 h-50 mx-auto rounded-lg overflow-hidden shadow-lg">
+                  <img
+                    src={match.nftA.image}
+                    alt={match.nftA.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-              )}
+                {match.winner === 'B' && (transferStatus === 'IN_PROGRESS' || transferStatus === 'COMPLETED') && (
+                  <div className="absolute inset-0 bg-red-500/20 rounded-lg flex items-center justify-center">
+                    <div className="text-white text-center">
+                      <div className="text-2xl mb-1">➡️</div>
+                      <div className="text-sm font-bold">
+                        {transferStatus === 'IN_PROGRESS' ? 'Transferring...' : 'Transferred'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <p className="mt-3 font-medium">{match.nftA.name}</p>
+              <p className="text-sm text-white/60">{match.nftA.rarity}</p>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white">
-              <h3 className="text-2xl font-bold mb-4">{match.playerB?.name}</h3>
-              <div className="text-4xl font-bold text-blue-400 mb-4">{match.scoreB}</div>
-              <div className="w-32 h-40 mx-auto rounded-lg overflow-hidden">
-                <img
-                  src={match.nftB!.image}
-                  alt={match.nftB!.name}
-                  className="w-full h-full object-cover"
-                />
+            <div className={`bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white border-2 ${
+              match.winner === 'B' ? 'border-yellow-400 bg-yellow-500/10' : 'border-white/20'
+            }`}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold">{match.playerB?.name}</h3>
+                {match.winner === 'B' && <div className="text-2xl">👑</div>}
               </div>
-              <p className="mt-2">{match.nftB!.name}</p>
-              {match.winner === 'A' && transferStatus === 'COMPLETED' && (
-                <div className="mt-2 text-red-400 text-sm">
-                  ➡️ Transferred to {match.playerA.name}
+              <div className="text-5xl font-bold text-blue-400 mb-6">{match.scoreB}</div>
+              <div className="relative">
+                <div className="w-40 h-50 mx-auto rounded-lg overflow-hidden shadow-lg">
+                  <img
+                    src={match.nftB!.image}
+                    alt={match.nftB!.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-              )}
+                {match.winner === 'A' && (transferStatus === 'IN_PROGRESS' || transferStatus === 'COMPLETED') && (
+                  <div className="absolute inset-0 bg-red-500/20 rounded-lg flex items-center justify-center">
+                    <div className="text-white text-center">
+                      <div className="text-2xl mb-1">➡️</div>
+                      <div className="text-sm font-bold">
+                        {transferStatus === 'IN_PROGRESS' ? 'Transferring...' : 'Transferred'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <p className="mt-3 font-medium">{match.nftB!.name}</p>
+              <p className="text-sm text-white/60">{match.nftB!.rarity}</p>
             </div>
           </div>
 
-          <Link
-            href="/"
-            className="bg-white text-orange-600 px-8 py-4 rounded-lg font-bold text-xl hover:bg-gray-100 transform hover:scale-105 transition-all"
-          >
-            Play Again
-          </Link>
+          {/* Game Stats */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-8">
+            <h3 className="text-2xl font-bold text-white mb-4 text-center">📊 Match Statistics</h3>
+            <div className="grid md:grid-cols-3 gap-6 text-center">
+              <div className="text-white">
+                <div className="text-3xl font-bold text-orange-400">{match.questions.length}</div>
+                <div className="text-sm text-white/70">Questions</div>
+              </div>
+              <div className="text-white">
+                <div className="text-3xl font-bold text-blue-400">
+                  {Math.abs(match.scoreA - match.scoreB)}
+                </div>
+                <div className="text-sm text-white/70">Point Difference</div>
+              </div>
+              <div className="text-white">
+                <div className="text-3xl font-bold text-green-400">
+                  {match.scoreA + match.scoreB}
+                </div>
+                <div className="text-sm text-white/70">Total Points</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+            <Link
+              href="/create"
+              className="bg-orange-500 text-white px-8 py-4 rounded-lg font-bold text-xl hover:bg-orange-400 transform hover:scale-105 transition-all text-center"
+            >
+              🚀 Create New Match
+            </Link>
+            <Link
+              href="/automatch"
+              className="bg-purple-500 text-white px-8 py-4 rounded-lg font-bold text-xl hover:bg-purple-400 transform hover:scale-105 transition-all text-center"
+            >
+              ⚡ Quick Match
+            </Link>
+            <button
+              onClick={() => {
+                const tweetText = match.winner === 'TIE' 
+                  ? `Just played an epic NBA trivia showdown that ended in a tie! 🤝 Final score: ${match.scoreA}-${match.scoreB} #HoopsTrivia #NBATopShot`
+                  : `Just ${winner ? 'won' : 'played'} an epic NBA trivia showdown! 🏀 Final score: ${match.scoreA}-${match.scoreB} ${winner ? `Winner: ${winner.name} 🏆` : ''} #HoopsTrivia #NBATopShot`;
+                const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+                window.open(tweetUrl, '_blank');
+              }}
+              className="bg-blue-500 text-white px-8 py-4 rounded-lg font-bold text-xl hover:bg-blue-400 transform hover:scale-105 transition-all text-center"
+            >
+              🐦 Share Result
+            </button>
+            <Link
+              href="/"
+              className="bg-white text-orange-600 px-8 py-4 rounded-lg font-bold text-xl hover:bg-gray-100 transform hover:scale-105 transition-all text-center"
+            >
+              🏠 Home
+            </Link>
+          </div>
         </div>
       </div>
     </div>

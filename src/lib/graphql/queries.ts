@@ -75,28 +75,20 @@ export const GET_ACCOUNT = gql`
 // Get user's Flow account information
 export const GET_MY_FLOW_ACCOUNT = gql`
   query GetMyFlowAccount {
-    getMyFlowAccount {
-      address
-      balance
-      isInitialized
-    }
+    getMyFlowAccount
   }
 `;
 
 // Get public Flow account by address
 export const GET_FLOW_ACCOUNT = gql`
   query GetFlowAccount($address: String!) {
-    getFlowAccount(address: $address) {
-      address
-      balance
-      isInitialized
-    }
+    getFlowAccount(address: $address)
   }
 `;
 
-// Withdraw NFT Mutation
+// Withdraw NFT Mutation - use correct field names
 export const WITHDRAW_NFT_MUTATION = gql`
-  mutation WithdrawNft($input: WithdrawNftInput!) {
+  mutation WithdrawNft($input: WithdrawNFTInput!) {
     withdrawNFT(input: $input) {
       id
       withdrawal {
@@ -105,7 +97,37 @@ export const WITHDRAW_NFT_MUTATION = gql`
         dappID
         contractQualifiedName
         destinationAddress
-        status
+        state
+        createdAt
+        completedAt
+        transactionHash
+      }
+    }
+  }
+`;
+
+// Alternative mutation without input wrapper (in case the schema is different)
+export const WITHDRAW_NFT_MUTATION_ALT = gql`
+  mutation WithdrawNftAlt(
+    $dappID: String!
+    $destinationAddress: String!
+    $tokenID: Int!
+    $contractQualifiedName: String
+  ) {
+    withdrawNFT(
+      dappID: $dappID
+      destinationAddress: $destinationAddress
+      tokenID: $tokenID
+      contractQualifiedName: $contractQualifiedName
+    ) {
+      id
+      withdrawal {
+        id
+        tokenID
+        dappID
+        contractQualifiedName
+        destinationAddress
+        state
         createdAt
         completedAt
         transactionHash

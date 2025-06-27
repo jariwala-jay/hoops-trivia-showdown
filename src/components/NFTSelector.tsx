@@ -14,7 +14,7 @@ interface NFTSelectorProps {
 
 export default function NFTSelector({ selectedNFT, onSelect, className = '' }: NFTSelectorProps) {
   const [filter, setFilter] = useState<string>('all');
-  const { moments, loading, error } = useUserMoments();
+  const { moments, isLoading, error } = useUserMoments();
 
   // Convert user moments to NFT format, fallback to mock data if no real moments
   const userNFTs: (NFT & { title?: string; imageURL?: string; contract?: string; serialNumber?: number; dapp?: { name?: string }; description?: string })[] = 
@@ -28,9 +28,7 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
       title: moment.name,
       imageURL: moment.image,
       contract: 'A.877931736ee77cff.TopShot', // Use the actual TopShot contract
-      serialNumber: moment.serialNumber,
-      dapp: moment.dapp ? { name: moment.dapp } : undefined,
-      description: moment.description
+      serialNumber: moment.serialNumber
     })) : MOCK_NFTS;
 
   const filteredNFTs = filter === 'all' 
@@ -53,7 +51,7 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
   };
 
   // Show loading state
-  if (loading) {
+  if (isLoading) {
     return (
       <div className={`w-full ${className}`}>
         <div className="text-center py-12">
@@ -80,7 +78,7 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
   return (
     <div className={`w-full ${className}`}>
       {/* Status Message */}
-      {moments.length === 0 && !loading && !error && (
+      {moments.length === 0 && !isLoading && !error && (
         <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
           <p className="text-yellow-200 text-sm">
             🎮 Using demo NFTs - your real Dapper moments will load here once authenticated
@@ -115,16 +113,22 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
 
       {/* NFT Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {filteredNFTs.map((nft) => (
-          <div
-            key={nft.id}
-            onClick={() => onSelect(nft)}
-            className={`relative group cursor-pointer rounded-xl overflow-hidden transition-all duration-300 ${
-              selectedNFT?.id === nft.id
-                ? 'ring-4 ring-orange-400 scale-105'
-                : 'hover:scale-105'
-            } ${getRarityColor(nft.rarity || 'common')}`}
-          >
+        {filteredNFTs.map((nft) => {
+          const isWithdrawInProgress = nft.isWithdrawInProgress;
+          const isDisabled = isWithdrawInProgress;
+          
+          return (
+            <div
+              key={nft.id}
+              onClick={() => !isDisabled && onSelect(nft)}
+              className={`relative group rounded-xl overflow-hidden transition-all duration-300 ${
+                isDisabled 
+                  ? 'opacity-50 cursor-not-allowed'
+                  : selectedNFT?.id === nft.id
+                    ? 'ring-4 ring-orange-400 scale-105 cursor-pointer'
+                    : 'hover:scale-105 cursor-pointer'
+              } ${getRarityColor(nft.rarity || 'common')}`}
+            >
             {/* NFT Image */}
             <div className="aspect-[3/4] relative">
               <Image
@@ -164,8 +168,19 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
                 </div>
               </div>
             </div>
+
+            {/* Withdrawal Status Overlay */}
+            {isWithdrawInProgress && (
+              <div className="absolute inset-0 bg-red-500/80 flex items-center justify-center">
+                <div className="text-white text-center">
+                  <div className="text-2xl mb-1">🔄</div>
+                  <div className="text-xs font-medium">TRANSFERRING</div>
+                </div>
+              </div>
+            )}
           </div>
-        ))}
+        );
+        })}
       </div>
 
       {filteredNFTs.length === 0 && (

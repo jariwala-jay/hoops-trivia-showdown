@@ -6,6 +6,7 @@ import Link from 'next/link';
 import NFTSelector from '@/components/NFTSelector';
 import { NFT, Match } from '@/types';
 import Image from 'next/image';
+import { useUserMoments } from '@/hooks/useUserMoments';
 
 export default function JoinMatchPage() {
   const [matchId, setMatchId] = useState('');
@@ -16,11 +17,15 @@ export default function JoinMatchPage() {
   const [error, setError] = useState<string | null>(null);
   const [rarityError, setRarityError] = useState<string | null>(null);
   const router = useRouter();
+  const { flowAddress, isLoading: momentsLoading } = useUserMoments();
+
+  console.log('Join page - Flow address:', flowAddress);
+  console.log('Join page - Moments loading:', momentsLoading);
 
   // Fetch match info when matchId changes
   useEffect(() => {
     const fetchMatchInfo = async () => {
-      if (!matchId.trim()) {
+      if (!matchId.trim() || matchId === 'undefined') {
         setMatchInfo(null);
         setError(null);
         return;
@@ -69,19 +74,34 @@ export default function JoinMatchPage() {
   const handleJoinMatch = async () => {
     if (!matchId.trim() || !selectedNFT) return;
 
+    console.log('Attempting to join match with Flow address:', flowAddress);
+
+    if (!flowAddress) {
+      setError('Flow address not available. Please try again.');
+      return;
+    }
+
     setIsJoining(true);
     setError(null);
 
     try {
+      const requestBody = {
+        matchId: matchId.trim(),
+        nft: selectedNFT,
+        flowAddress: flowAddress,
+      };
+      
+      console.log('=== JOIN MATCH REQUEST DEBUG ===');
+      console.log('Request body being sent:', JSON.stringify(requestBody, null, 2));
+      console.log('Flow address being sent:', flowAddress);
+      console.log('Flow address type:', typeof flowAddress);
+      
       const response = await fetch('/api/match/join', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          matchId: matchId.trim(),
-          nft: selectedNFT,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -93,7 +113,7 @@ export default function JoinMatchPage() {
       
       // Show success feedback briefly before redirecting
       setTimeout(() => {
-        router.push(`/match/${data.matchId}`);
+        router.push(`/match/${data.match.id}`);
       }, 500);
       
     } catch (err) {
