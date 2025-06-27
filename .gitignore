@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+#md files
+AUTH0_CUSTOM_IMPLEMENTATION.md
+AUTH0_SETUP.md
+deployment-guide.md

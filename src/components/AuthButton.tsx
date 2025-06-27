@@ -1,0 +1,40 @@
+import { auth0 } from '@/lib/auth0';
+
+export default async function AuthButton() {
+  const session = await auth0.getSession();
+  const user = session?.user;
+
+  if (user) {
+    return (
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          {user.picture && (
+            <img 
+              src={user.picture} 
+              alt={user.name || 'User'} 
+              className="w-8 h-8 rounded-full"
+            />
+          )}
+          <span className="text-white font-medium">
+            {user.name || user.email}
+          </span>
+        </div>
+        <a 
+          href="/api/logout"
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Logout
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <a 
+      href="/api/login"
+      className="px-6 py-3 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 transition-colors"
+    >
+      Login
+    </a>
+  );
+} 
