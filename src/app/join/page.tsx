@@ -1,62 +1,75 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import NFTSelector from '@/components/NFTSelector';
-import { NFT } from '@/types';
-import toast from 'react-hot-toast';
+import { NFT, Match } from '@/types';
 
 export default function JoinMatchPage() {
   const [matchId, setMatchId] = useState('');
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
   const [isJoining, setIsJoining] = useState(false);
-  const [matchInfo, setMatchInfo] = useState<{ requiredRarity?: string; playerName?: string } | null>(null);
+  const [isLoadingMatch, setIsLoadingMatch] = useState(false);
+  const [matchInfo, setMatchInfo] = useState<Match | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [rarityError, setRarityError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Fetch match info to get required rarity
-  const fetchMatchInfo = async (id: string) => {
-    if (!id.trim()) {
-      setMatchInfo(null);
-      setRarityError(null);
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/match/${id.trim()}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.match) {
-          setMatchInfo({
-            requiredRarity: data.match.nftA?.rarity,
-            playerName: data.match.playerA?.name
-          });
-          setRarityError(null);
-        }
-      } else {
+  // Fetch match info when matchId changes
+  useEffect(() => {
+    const fetchMatchInfo = async () => {
+      if (!matchId.trim()) {
         setMatchInfo(null);
+        setError(null);
+        return;
+      }
+
+      setIsLoadingMatch(true);
+      setError(null);
+
+      try {
+        const response = await fetch(`/api/match/${matchId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setMatchInfo(data.match);
+        } else {
+          setMatchInfo(null);
+          setError('Match not found');
+        }
+              } catch {
+          setMatchInfo(null);
+          setError('Failed to load match');
+        } finally {
+        setIsLoadingMatch(false);
+      }
+    };
+
+    const timeoutId = setTimeout(fetchMatchInfo, 500); // Debounce
+    return () => clearTimeout(timeoutId);
+  }, [matchId]);
+
+  // Check rarity compatibility when NFT is selected
+  useEffect(() => {
+    if (selectedNFT && matchInfo) {
+      const matchNFTRarity = matchInfo.nftA.rarity?.toLowerCase();
+      const selectedNFTRarity = selectedNFT.rarity?.toLowerCase();
+      
+      if (matchNFTRarity !== selectedNFTRarity) {
+        setRarityError(`This match requires ${matchInfo.nftA.rarity} rarity NFTs. Your selected NFT is ${selectedNFT.rarity}.`);
+      } else {
         setRarityError(null);
       }
-    } catch (error) {
-      console.error('Error fetching match info:', error);
-      setMatchInfo(null);
+    } else {
       setRarityError(null);
     }
-  };
+  }, [selectedNFT, matchInfo]);
 
   const handleJoinMatch = async () => {
-    if (!matchId.trim()) {
-      toast.error('Please enter a match ID');
-      return;
-    }
-
-    if (!selectedNFT) {
-      toast.error('Please select an NFT to stake');
-      return;
-    }
+    if (!matchId.trim() || !selectedNFT) return;
 
     setIsJoining(true);
+    setError(null);
 
     try {
       const response = await fetch('/api/match/join', {
@@ -66,33 +79,31 @@ export default function JoinMatchPage() {
         },
         body: JSON.stringify({
           matchId: matchId.trim(),
-          nft: selectedNFT // Send the full NFT object
+          nft: selectedNFT,
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        // Handle rarity mismatch specifically
-        if (data.requiredRarity && data.providedRarity) {
-          setRarityError(data.error);
-          toast.error(data.error);
-        } else {
-          throw new Error(data.error || 'Failed to join match');
-        }
-        return;
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to join match');
       }
 
-      toast.success('Successfully joined match!');
-      router.push(`/match/${matchId.trim()}`);
-    } catch (error) {
-      console.error('Error joining match:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to join match');
-      setRarityError(null);
+      const data = await response.json();
+      
+      // Show success feedback briefly before redirecting
+      setTimeout(() => {
+        router.push(`/match/${data.matchId}`);
+      }, 500);
+      
+    } catch (err) {
+      console.error('Error joining match:', err);
+      setError(err instanceof Error ? err.message : 'Failed to join match');
     } finally {
       setIsJoining(false);
     }
   };
+
+  const canJoin = matchId.trim() && selectedNFT && matchInfo && !rarityError && !isJoining;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600">
@@ -106,116 +117,117 @@ export default function JoinMatchPage() {
             ← Back to Home
           </Link>
           <h1 className="text-4xl font-bold text-white">Join Match</h1>
-          <div className="w-24"></div> {/* Spacer for centering */}
+          <div className="w-24"></div>
         </div>
 
         <div className="max-w-6xl mx-auto">
           {/* Match ID Input */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-8">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-6">
             <h2 className="text-2xl font-bold text-white mb-4">Enter Match ID</h2>
-            <p className="text-blue-100 mb-4">
-              Get the match ID from your opponent and enter it below
-            </p>
-            <div className="max-w-md">
+            <div className="relative">
               <input
                 type="text"
                 value={matchId}
-                onChange={(e) => {
-                  setMatchId(e.target.value);
-                  setRarityError(null);
-                  fetchMatchInfo(e.target.value);
-                }}
-                placeholder="Enter match ID (e.g., 123e4567-e89b-12d3-a456-426614174000)"
-                className="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
+                onChange={(e) => setMatchId(e.target.value)}
+                placeholder="Enter the match ID..."
+                className="w-full px-4 py-3 rounded-lg bg-white/20 text-white placeholder-white/50 border border-white/30 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
               />
+              {isLoadingMatch && (
+                <div className="absolute right-3 top-3">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                </div>
+              )}
             </div>
-            
-            {/* Match Info Display */}
-            {matchInfo && (
-              <div className="mt-4 p-4 bg-green-500/20 border border-green-500/30 rounded-lg">
-                <h3 className="text-green-200 font-semibold mb-2">Match Found!</h3>
-                <p className="text-green-100 text-sm">
-                  Challenge from: <span className="font-medium">{matchInfo.playerName}</span>
-                </p>
-                <p className="text-green-100 text-sm">
-                  Required NFT Rarity: <span className="font-medium capitalize">{matchInfo.requiredRarity === 'Common' ? 'Fandom' : matchInfo.requiredRarity}</span>
-                </p>
-              </div>
-            )}
-
-            {/* Rarity Error Display */}
-            {rarityError && (
-              <div className="mt-4 p-4 bg-red-500/20 border border-red-500/30 rounded-lg">
-                <h3 className="text-red-200 font-semibold mb-2">⚠️ Rarity Mismatch</h3>
-                <p className="text-red-100 text-sm">{rarityError}</p>
-                <p className="text-red-100 text-sm mt-2">
-                  Please select an NFT with the correct rarity to join this match.
-                </p>
-              </div>
-            )}
           </div>
 
-          {/* NFT Selection */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-8">
-            <h2 className="text-2xl font-bold text-white mb-4">Select Your NFT to Stake</h2>
-            <p className="text-blue-100 mb-6">
-              Choose the NFT you want to stake in this match. Winner takes all!
-            </p>
-            
-            {/* Rarity Filter Hint */}
-            {matchInfo?.requiredRarity && (
-              <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
-                                 <p className="text-blue-200 text-sm">
-                   💡 <strong>Tip:</strong> Filter by &ldquo;{matchInfo.requiredRarity === 'Common' ? 'Fandom' : matchInfo.requiredRarity}&rdquo; to see only compatible NFTs for this match.
-                 </p>
+          {/* Error Display */}
+          {error && (
+            <div className="mb-6">
+              <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-4">
+                <div className="flex items-center space-x-2">
+                  <div className="text-red-400">⚠️</div>
+                  <span className="text-red-200">{error}</span>
+                </div>
               </div>
-            )}
-            
-            <NFTSelector
-              selectedNFT={selectedNFT}
-              onSelect={(nft) => {
-                setSelectedNFT(nft);
-                setRarityError(null); // Clear any previous rarity errors when selecting
-              }}
-            />
-          </div>
+            </div>
+          )}
 
-          {/* Selected NFT Preview */}
-          {selectedNFT && (
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-8">
-              <h2 className="text-2xl font-bold text-white mb-4">Selected NFT</h2>
-              <div className="flex items-center space-x-4">
-                <div className="w-24 h-32 relative rounded-lg overflow-hidden">
-                  <img
-                    src={selectedNFT.image}
-                    alt={selectedNFT.name}
-                    className="w-full h-full object-cover"
-                  />
+          {/* Match Info Display */}
+          {matchInfo && (
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-6">
+              <h2 className="text-2xl font-bold text-white mb-4">Match Details</h2>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-2">Opponent</h3>
+                  <p className="text-blue-100">{matchInfo.playerA.name}</p>
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white">{selectedNFT.name}</h3>
-                  <p className="text-blue-100">{selectedNFT.collection}</p>
-                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium mt-2 ${
-                    selectedNFT.rarity?.toLowerCase() === 'legendary' ? 'bg-yellow-400/20 text-yellow-400' :
-                    selectedNFT.rarity?.toLowerCase() === 'epic' ? 'bg-purple-400/20 text-purple-400' :
-                    selectedNFT.rarity?.toLowerCase() === 'rare' ? 'bg-blue-400/20 text-blue-400' :
-                    selectedNFT.rarity?.toLowerCase() === 'common' ? 'bg-green-400/20 text-green-400' :
-                    'bg-gray-400/20 text-gray-400'
-                  }`}>
-                    {selectedNFT.rarity === 'Common' ? 'Fandom' : selectedNFT.rarity}
-                  </span>
-                  
-                  {/* Rarity compatibility indicator */}
-                  {matchInfo?.requiredRarity && selectedNFT.rarity !== matchInfo.requiredRarity && (
-                    <div className="mt-2 text-red-400 text-sm">
-                      ⚠️ This NFT won&apos;t work - requires {matchInfo.requiredRarity === 'Common' ? 'Fandom' : matchInfo.requiredRarity} rarity
+                  <h3 className="text-lg font-bold text-white mb-2">Staked NFT</h3>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-16 h-20 rounded-lg overflow-hidden">
+                      <img
+                        src={matchInfo.nftA.image}
+                        alt={matchInfo.nftA.name}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                  )}
-                  {matchInfo?.requiredRarity && selectedNFT.rarity === matchInfo.requiredRarity && (
-                    <div className="mt-2 text-green-400 text-sm">
-                      ✅ Perfect match!
+                    <div>
+                      <p className="text-white font-medium">{matchInfo.nftA.name}</p>
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                        matchInfo.nftA.rarity?.toLowerCase() === 'legendary' ? 'bg-yellow-400/20 text-yellow-400' :
+                        matchInfo.nftA.rarity?.toLowerCase() === 'epic' ? 'bg-purple-400/20 text-purple-400' :
+                        matchInfo.nftA.rarity?.toLowerCase() === 'rare' ? 'bg-blue-400/20 text-blue-400' :
+                        'bg-gray-400/20 text-gray-400'
+                      }`}>
+                        {matchInfo.nftA.rarity}
+                      </span>
                     </div>
-                  )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-4 p-4 bg-blue-500/20 rounded-lg">
+                <p className="text-blue-200 text-sm">
+                  💡 <strong>Tip:</strong> You need to select an NFT with <strong>{matchInfo.nftA.rarity}</strong> rarity to join this match.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* NFT Selection */}
+          {matchInfo && (
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-6">
+              <h2 className="text-2xl font-bold text-white mb-4">Select Your NFT to Stake</h2>
+              <p className="text-blue-100 mb-6">
+                Choose an NFT with <strong>{matchInfo.nftA.rarity}</strong> rarity to match your opponent.
+              </p>
+              
+              <NFTSelector
+                selectedNFT={selectedNFT}
+                onSelect={setSelectedNFT}
+              />
+            </div>
+          )}
+
+          {/* Rarity Error */}
+          {rarityError && (
+            <div className="mb-6">
+              <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-4">
+                <div className="flex items-center space-x-2">
+                  <div className="text-red-400">⚠️</div>
+                  <span className="text-red-200">{rarityError}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Success Indicator */}
+          {selectedNFT && matchInfo && !rarityError && (
+            <div className="mb-6">
+              <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-4">
+                <div className="flex items-center space-x-2">
+                  <div className="text-green-400">✅</div>
+                  <span className="text-green-200">Perfect match! Ready to join the battle.</span>
                 </div>
               </div>
             </div>
@@ -225,19 +237,33 @@ export default function JoinMatchPage() {
           <div className="text-center">
             <button
               onClick={handleJoinMatch}
-              disabled={!matchId.trim() || !selectedNFT || isJoining}
-              className={`px-8 py-4 rounded-xl font-bold text-xl transition-all ${
-                !matchId.trim() || !selectedNFT || isJoining
+              disabled={!canJoin}
+              className={`px-8 py-4 rounded-xl font-bold text-xl transition-all duration-200 ${
+                !canJoin
                   ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-blue-400 to-purple-500 text-white hover:from-blue-300 hover:to-purple-400 hover:scale-105'
+                  : 'bg-blue-500 text-white hover:bg-blue-400 transform hover:scale-105 shadow-lg hover:shadow-xl'
               }`}
             >
-              {isJoining ? 'Joining Match...' : 'Join Match'}
+              {isJoining ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Joining Match...</span>
+                </div>
+              ) : (
+                <>
+                  ⚔️ Join Battle
+                </>
+              )}
             </button>
             
-            {(!matchId.trim() || !selectedNFT) && (
+            {!matchId.trim() && (
               <p className="text-blue-200 mt-4">
-                Enter match ID and select an NFT to continue
+                Enter a match ID to get started
+              </p>
+            )}
+            {matchId.trim() && !selectedNFT && matchInfo && (
+              <p className="text-blue-200 mt-4">
+                Select an NFT to stake
               </p>
             )}
           </div>

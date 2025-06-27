@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 export default function CreateMatchPage() {
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const handleCreateMatch = async () => {
@@ -19,6 +20,7 @@ export default function CreateMatchPage() {
     }
 
     setIsCreating(true);
+    setError(null);
 
     try {
       const response = await fetch('/api/match/create', {
@@ -27,21 +29,25 @@ export default function CreateMatchPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          nft: selectedNFT // Send the full NFT object
+          nft: selectedNFT,
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create match');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create match');
       }
 
-      toast.success('Match created successfully!');
-      router.push(`/match/${data.matchId}`);
-    } catch (error) {
-      console.error('Error creating match:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to create match');
+      const data = await response.json();
+      
+      // Show success feedback briefly before redirecting
+      setTimeout(() => {
+        router.push(`/match/${data.matchId}`);
+      }, 500);
+      
+    } catch (err) {
+      console.error('Error creating match:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create match');
     } finally {
       setIsCreating(false);
     }
@@ -63,6 +69,16 @@ export default function CreateMatchPage() {
         </div>
 
         <div className="max-w-6xl mx-auto">
+          {error && (
+            <div className="mb-6 mx-auto max-w-md">
+              <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-4">
+                <div className="flex items-center space-x-2">
+                  <div className="text-red-400">⚠️</div>
+                  <span className="text-red-200">{error}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* NFT Selection */}
           <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-8">
@@ -110,13 +126,22 @@ export default function CreateMatchPage() {
             <button
               onClick={handleCreateMatch}
               disabled={!selectedNFT || isCreating}
-              className={`px-8 py-4 rounded-xl font-bold text-xl transition-all ${
+              className={`px-8 py-4 rounded-xl font-bold text-xl transition-all duration-200 ${
                 !selectedNFT || isCreating
                   ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-orange-400 to-red-500 text-white hover:from-orange-300 hover:to-red-400 hover:scale-105'
+                  : 'bg-orange-500 text-white hover:bg-orange-400 transform hover:scale-105 shadow-lg hover:shadow-xl'
               }`}
             >
-              {isCreating ? 'Creating Match...' : 'Create Match'}
+              {isCreating ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Creating Match...</span>
+                </div>
+              ) : (
+                <>
+                  🚀 Create Match
+                </>
+              )}
             </button>
             
             {!selectedNFT && (

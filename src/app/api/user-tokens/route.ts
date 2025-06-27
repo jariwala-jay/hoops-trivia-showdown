@@ -12,9 +12,6 @@ export async function GET(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
-
-    // Use Dapper's exact fetchAccessToken pattern
-    console.log('Fetching access token using Dapper pattern for user tokens...');
     
     let accessTokenData: AccessToken | null = null;
     
@@ -28,9 +25,7 @@ export async function GET(request: NextRequest) {
       
       if (tokenResponse.ok && tokenResponse.status === 200) {
         accessTokenData = await tokenResponse.json();
-        console.log('Successfully fetched access token via Dapper pattern');
       } else {
-        console.log('Failed to fetch access token:', tokenResponse.status);
         return NextResponse.json({ error: 'Failed to fetch access token' }, { status: 401 });
       }
     } catch (error) {
@@ -81,8 +76,6 @@ export async function GET(request: NextRequest) {
         }
       }
     };
-
-    console.log('Attempting Dapper GraphQL request with fetchAccessToken token...');
     
     try {
       const response = await fetch('https://staging.accounts.meetdapper.com/graphql', {
@@ -97,9 +90,6 @@ export async function GET(request: NextRequest) {
       });
 
       const data = await response.json();
-      
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
       
       if (data.errors) {
         console.error('GraphQL errors:', data.errors);
@@ -177,7 +167,6 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      console.log('Successfully fetched real tokens:', data);
       return NextResponse.json({
         ...data,
         _debug: {
