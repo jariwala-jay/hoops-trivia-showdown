@@ -1,108 +1,123 @@
 import { useState, useEffect } from 'react';
+import { useUser } from '@auth0/nextjs-auth0';
+import { NFT } from '@/types';
 
-interface UserMoment {
-  id: string;
-  name: string;
-  description: string;
-  image: string;
-  rarity: 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Fandom';
-  player?: string;
-  team?: string;
-  serialNumber?: number;
-  collection?: string;
-  dapp?: string;
+// Helper function to extract rarity from description
+function extractRarity(description: string): 'Common' | 'Rare' | 'Epic' | 'Legendary' {
+  const lowerDesc = description.toLowerCase();
+  if (lowerDesc.includes('legendary')) return 'Legendary';
+  if (lowerDesc.includes('epic')) return 'Epic';
+  if (lowerDesc.includes('rare')) return 'Rare';
+  return 'Common';
 }
 
-interface UseUserMomentsResult {
-  moments: UserMoment[];
-  loading: boolean;
+interface UseUserMomentsReturn {
+  moments: NFT[];
+  isLoading: boolean;
   error: string | null;
   refetch: () => void;
+  flowAddress: string | null;
 }
 
-export function useUserMoments(): UseUserMomentsResult {
-  const [moments, setMoments] = useState<UserMoment[]>([]);
-  const [loading, setLoading] = useState(true);
+export function useUserMoments(): UseUserMomentsReturn {
+  const { user, isLoading: userLoading } = useUser();
+  const [moments, setMoments] = useState<NFT[]>([]);
+  const [flowAddress, setFlowAddress] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMoments = async () => {
+  const fetchUserData = async () => {
+    if (!user || userLoading) return;
+
+    setIsLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      setError(null);
-      
-      console.log('Fetching user tokens...');
+      // Fetch both NFTs and Flow address in parallel
+      const [tokensResponse, flowResponse] = await Promise.all([
+        fetch('/api/user-tokens'),
+        fetch('/api/user-flow-account')
+      ]);
 
-      // Use our server-side API that handles Dapper authentication
-      const response = await fetch('/api/user-tokens');
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch tokens');
+      // Handle NFTs
+      if (tokensResponse.ok) {
+        const tokensData = await tokensResponse.json();
+        console.log('Tokens response:', tokensData);
+        
+        // Handle both direct tokens array and GraphQL response format
+        const tokens = tokensData.tokens || tokensData.data?.getTokens?.tokens || [];
+        
+        // Convert tokens to NFT format, filtering out those in withdrawal progress
+        const nfts: NFT[] = tokens
+          .filter((token: { isWithdrawInProgress?: boolean }) => !token.isWithdrawInProgress)
+          .map((token: {
+            id: string;
+            title?: string;
+            imageURL?: string;
+            description?: string;
+            serialNumber?: number;
+            contract?: string;
+            dapp?: { name?: string; id?: string };
+            isWithdrawInProgress?: boolean;
+          }) => ({
+            id: token.id,
+            name: token.title || `Token #${token.id}`,
+            image: token.imageURL || '/testImage.jpg',
+            rarity: extractRarity(token.description || ''),
+            collection: token.dapp?.name || 'NBA Top Shot',
+            contract: token.contract || 'A.877931736ee77cff.TopShot',
+            dappID: token.dapp?.id || 'ad3260ba-a87c-4359-a8b0-def2cc36310b',
+            serialNumber: token.serialNumber,
+            isWithdrawInProgress: token.isWithdrawInProgress || false
+          }));
+        
+        setMoments(nfts);
+        console.log('Processed NFTs:', nfts);
+      } else {
+        console.error('Failed to fetch tokens:', tokensResponse.status);
+        setMoments([]);
       }
 
-      console.log('Tokens response:', data);
-
-      const processedMoments: UserMoment[] = [];
-
-      if (data.data?.getTokens?.tokens) {
-        data.data.getTokens.tokens.forEach((token: {
-          id: string;
-          title: string;
-          description: string;
-          imageURL?: string;
-          serialNumber?: number;
-          contract?: string;
-          dapp?: {
-            name?: string;
-            tokenFallbackImageURL?: string;
-          };
-        }) => {
-          // Filter out packs - only include NBA Top Shot moments
-          if (token.contract === 'A.877931736ee77cff.TopShot') {
-            // Extract rarity from description
-            const extractRarity = (desc: string): 'Common' | 'Rare' | 'Epic' | 'Legendary' => {
-              const lowerDesc = desc.toLowerCase();
-              if (lowerDesc.includes('legendary')) return 'Legendary';
-              if (lowerDesc.includes('epic')) return 'Epic';
-              if (lowerDesc.includes('rare')) return 'Rare';
-              if (lowerDesc.includes('fandom')) return 'Common'; // Fandom is typically common tier
-              return 'Common'; // Default
-            };
-
-            processedMoments.push({
-              id: token.id,
-              name: token.title || `Token #${token.id}`,
-              description: token.description || '',
-              image: token.imageURL || token.dapp?.tokenFallbackImageURL || '/testImage.jpg',
-              rarity: extractRarity(token.description || ''),
-              collection: token.dapp?.name || 'NBA Top Shot',
-              dapp: token.dapp?.name || 'NBA Top Shot',
-              serialNumber: token.serialNumber
-            });
-          }
-        });
+      // Handle Flow address
+      if (flowResponse.ok) {
+        const flowData = await flowResponse.json();
+        console.log('Flow address API response:', flowData);
+        setFlowAddress(flowData.address || null);
+        console.log('User Flow address set to:', flowData.address);
+      } else {
+        const errorText = await flowResponse.text();
+        console.error('Failed to fetch Flow address:', flowResponse.status, errorText);
+        setFlowAddress(null);
       }
-
-      console.log('Processed moments:', processedMoments);
-
-      setMoments(processedMoments);
-      setLoading(false);
 
     } catch (err) {
-      console.error('Error fetching moments:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch moments');
-      setLoading(false);
+      console.error('Error fetching user data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch user data');
+      setMoments([]);
+      setFlowAddress(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMoments();
-  }, []);
+    fetchUserData();
+    
+    // Set up auto-refresh every 30 seconds to check withdrawal status
+    const interval = setInterval(() => {
+      if (user && !userLoading) {
+        fetchUserData();
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [user, userLoading]);
 
   return {
     moments,
-    loading,
+    flowAddress,
+    isLoading,
     error,
-    refetch: fetchMoments
+    refetch: fetchUserData
   };
 } 

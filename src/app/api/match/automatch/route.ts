@@ -14,7 +14,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { nft, action } = body;
+    const { nft, action, flowAddress } = body;
+
+    console.log('=== AUTOMATCH DEBUG ===');
+    console.log('Full request body:', JSON.stringify(body, null, 2));
+    console.log('Received Flow address:', flowAddress);
 
     if (!nft || !nft.id) {
       return NextResponse.json({ error: 'NFT data is required' }, { status: 400 });
@@ -22,6 +26,10 @@ export async function POST(request: NextRequest) {
 
     if (!action || !['join', 'cancel'].includes(action)) {
       return NextResponse.json({ error: 'Valid action is required (join or cancel)' }, { status: 400 });
+    }
+
+    if (action === 'join' && !flowAddress) {
+      return NextResponse.json({ error: 'Flow address is required for joining automatch' }, { status: 400 });
     }
 
     const userId = session.user.sub || session.user.email || 'unknown';
@@ -64,12 +72,14 @@ export async function POST(request: NextRequest) {
         playerA: {
           id: uuidv4(),
           name: opponent.userName,
-          avatar: opponent.userAvatar
+          avatar: opponent.userAvatar,
+          flowAddress: opponent.flowAddress
         },
         playerB: {
           id: uuidv4(),
           name: userName,
-          avatar: userAvatar
+          avatar: userAvatar,
+          flowAddress: flowAddress
         },
         nftA: {
           id: opponent.nft.id,
@@ -109,6 +119,7 @@ export async function POST(request: NextRequest) {
         userId,
         userName,
         userAvatar,
+        flowAddress,
         nft: {
           id: nftData.id,
           name: nftData.name || 'Unknown NFT',

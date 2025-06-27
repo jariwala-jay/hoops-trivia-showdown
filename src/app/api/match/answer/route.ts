@@ -1,6 +1,99 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, calculateScore } from '@/lib/db';
 import { PlayerAnswer } from '@/types';
+import { handleMatchFinishTransfers } from '@/lib/nftTransfer';
+
+// Background function to trigger NFT transfer with direct service call
+async function triggerNFTTransfer(matchId: string, request?: NextRequest): Promise<void> {
+  try {
+    console.log(`Triggering background NFT transfer for match ${matchId}`);
+    
+    // Get the match data
+    const match = await db.getMatch(matchId);
+    if (!match) {
+      console.error(`Match ${matchId} not found for NFT transfer`);
+      return;
+    }
+
+    // Try to get access token from session if request is available
+    let serverSideContext: { accessToken?: string; cookies?: string } | undefined;
+    
+    if (request) {
+      try {
+
+        const cookies = request.headers.get('cookie') || '';
+        
+        // Get access token from session
+        const tokenResponse = await fetch(`${process.env.AUTH0_BASE_URL || 'http://localhost:4000'}/api/access-token`, {
+          headers: {
+            'Cookie': cookies
+          }
+        });
+        
+
+        
+        if (tokenResponse.ok) {
+          const tokenData = await tokenResponse.json();
+          console.log('Token data received:', !!tokenData.accessToken);
+          if (tokenData.accessToken) {
+            serverSideContext = { 
+              accessToken: tokenData.accessToken,
+              cookies: cookies
+            };
+
+          }
+        } else {
+          console.warn('Token response not OK:', tokenResponse.status, await tokenResponse.text());
+        }
+      } catch (error) {
+        console.warn('Could not get access token for NFT transfer:', error);
+      }
+    } else {
+      console.warn('No request object available for NFT transfer auth context');
+    }
+
+    // Call the transfer service directly
+    const transferResult = await handleMatchFinishTransfers(match, serverSideContext);
+    
+    // Update match with transfer results
+    const updateData: {
+      nftTransferStatus: 'IN_PROGRESS' | 'FAILED';
+      nftTransferError?: string;
+      nftTransferAttempts: number;
+    } = {
+      nftTransferStatus: transferResult.success ? 'IN_PROGRESS' : 'FAILED',
+      nftTransferAttempts: (match.nftTransferAttempts || 0) + 1
+    };
+
+    if (!transferResult.success) {
+      updateData.nftTransferError = transferResult.error;
+    }
+
+    await db.updateMatch(matchId, updateData);
+    
+    if (transferResult.success) {
+      console.log(`NFT transfer initiated successfully for match ${matchId}`);
+    } else {
+      console.error(`NFT transfer failed to initiate for match ${matchId}:`, transferResult.error);
+    }
+  } catch (error) {
+    console.error(`Failed to trigger NFT transfer for match ${matchId}:`, error);
+    
+    // Try to update match status to failed
+    try {
+      const match = await db.getMatch(matchId);
+      if (match) {
+        await db.updateMatch(matchId, {
+          nftTransferStatus: 'FAILED',
+          nftTransferError: error instanceof Error ? error.message : 'Unknown error',
+          nftTransferAttempts: (match.nftTransferAttempts || 0) + 1
+        });
+      }
+    } catch (updateError) {
+      console.error('Failed to update match status after transfer error:', updateError);
+    }
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -119,8 +212,17 @@ export async function POST(request: NextRequest) {
         updatedMatch = await db.updateMatch(matchId, {
           status: 'FINISHED',
           winner,
-          finishedAt: new Date().toISOString()
+          finishedAt: new Date().toISOString(),
+          nftTransferStatus: winner === 'TIE' ? 'COMPLETED' : 'PENDING' // No transfer needed for ties
         });
+
+        // Trigger NFT transfer in background for non-tie games
+        if (winner !== 'TIE') {
+          // Don't await this - let it run in background
+          triggerNFTTransfer(matchId, request).catch((error: unknown) => {
+            console.error(`Background NFT transfer failed for match ${matchId}:`, error);
+          });
+        }
       } else {
         // Move to next question
         updatedMatch = await db.updateMatch(matchId, {

@@ -29,6 +29,7 @@ export interface AutomatchEntry {
   userId: string;
   userName: string;
   userAvatar?: string;
+  flowAddress?: string;
   nft: {
     id: string;
     name: string;

@@ -11,6 +11,7 @@ const activeConnections = new Map<string, {
   userId: string;
   userName: string;
   userAvatar?: string;
+  flowAddress: string;
   rarity: string;
   nft: NFT;
 }>();
@@ -25,9 +26,17 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const nftData = searchParams.get('nft');
     const rarity = searchParams.get('rarity');
+    const flowAddress = searchParams.get('flowAddress');
+
+    console.log('=== SSE AUTOMATCH DEBUG ===');
+    console.log('Received Flow address in SSE:', flowAddress);
 
     if (!nftData || !rarity) {
       return new Response('NFT data and rarity are required', { status: 400 });
+    }
+
+    if (!flowAddress) {
+      return new Response('Flow address is required', { status: 400 });
     }
 
     const nft: NFT = JSON.parse(decodeURIComponent(nftData));
@@ -47,6 +56,7 @@ export async function GET(request: NextRequest) {
           userId,
           userName,
           userAvatar,
+          flowAddress,
           rarity,
           nft
         });
@@ -90,7 +100,7 @@ async function findMatchForUser(connectionId: string) {
   const connection = activeConnections.get(connectionId);
   if (!connection) return;
 
-  const { controller, userId, userName, userAvatar, rarity, nft } = connection;
+  const { controller, userId, userName, userAvatar, flowAddress, rarity, nft } = connection;
 
   try {
     // Look for an opponent
@@ -107,12 +117,14 @@ async function findMatchForUser(connectionId: string) {
         playerA: {
           id: uuidv4(),
           name: opponent.userName,
-          avatar: opponent.userAvatar
+          avatar: opponent.userAvatar,
+          flowAddress: opponent.flowAddress
         },
         playerB: {
           id: uuidv4(),
           name: userName,
-          avatar: userAvatar
+          avatar: userAvatar,
+          flowAddress: flowAddress
         },
         nftA: {
           id: opponent.nft.id,
@@ -176,6 +188,7 @@ async function findMatchForUser(connectionId: string) {
         userId,
         userName,
         userAvatar,
+        flowAddress,
         nft: {
           id: nft.id,
           name: nft.name || 'Unknown NFT',

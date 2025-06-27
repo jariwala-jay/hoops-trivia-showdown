@@ -15,7 +15,7 @@ export const auth0 = new Auth0Client({
     audience: process.env.AUTH0_AUDIENCE!,
   },
   
-  // Custom routes to match your existing Auth0 client configuration
+  // Keep existing custom routes that are working
   routes: {
     login: '/api/login',
     logout: '/api/logout',

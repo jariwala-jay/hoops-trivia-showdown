@@ -7,11 +7,17 @@ import NFTSelector from '@/components/NFTSelector';
 import { NFT } from '@/types';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import { useUserMoments } from '@/hooks/useUserMoments';
+
 export default function CreateMatchPage() {
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { flowAddress, isLoading: momentsLoading } = useUserMoments();
+
+  console.log('Create page - Flow address:', flowAddress);
+  console.log('Create page - Moments loading:', momentsLoading);
 
   const handleCreateMatch = async () => {
     if (!selectedNFT) {
@@ -19,18 +25,33 @@ export default function CreateMatchPage() {
       return;
     }
 
+    console.log('Attempting to create match with Flow address:', flowAddress);
+
+    if (!flowAddress) {
+      toast.error('Flow address not available. Please try again.');
+      return;
+    }
+
     setIsCreating(true);
     setError(null);
 
     try {
+      const requestBody = {
+        nft: selectedNFT,
+        flowAddress: flowAddress,
+      };
+      
+      console.log('=== CREATE MATCH REQUEST DEBUG ===');
+      console.log('Request body being sent:', JSON.stringify(requestBody, null, 2));
+      console.log('Flow address being sent:', flowAddress);
+      console.log('Flow address type:', typeof flowAddress);
+      
       const response = await fetch('/api/match/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          nft: selectedNFT,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -127,9 +148,9 @@ export default function CreateMatchPage() {
           <div className="text-center">
             <button
               onClick={handleCreateMatch}
-              disabled={!selectedNFT || isCreating}
+              disabled={!selectedNFT || isCreating || momentsLoading || !flowAddress}
               className={`px-8 py-4 rounded-xl font-bold text-xl transition-all duration-200 ${
-                !selectedNFT || isCreating
+                !selectedNFT || isCreating || momentsLoading || !flowAddress
                   ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
                   : 'bg-orange-500 text-white hover:bg-orange-400 transform hover:scale-105 shadow-lg hover:shadow-xl'
               }`}
@@ -146,7 +167,17 @@ export default function CreateMatchPage() {
               )}
             </button>
             
-            {!selectedNFT && (
+            {momentsLoading && (
+              <p className="text-orange-200 mt-4">
+                Loading your Flow address...
+              </p>
+            )}
+            {!momentsLoading && !flowAddress && (
+              <p className="text-orange-200 mt-4">
+                Flow address not available. Please refresh the page.
+              </p>
+            )}
+            {!selectedNFT && flowAddress && !momentsLoading && (
               <p className="text-orange-200 mt-4">
                 Select an NFT to stake
               </p>
