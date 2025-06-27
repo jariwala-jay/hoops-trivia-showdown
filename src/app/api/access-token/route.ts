@@ -12,14 +12,8 @@ export async function GET(): Promise<NextResponse> {
     const { token: accessToken } = await auth0.getAccessToken();
     
     if (!accessToken) {
-      console.log('No access token received from Auth0 SDK');
       return NextResponse.json(null, { status: 401 });
     }
-
-    console.log('Successfully got access token from Auth0 SDK:', {
-      hasToken: !!accessToken,
-      preview: accessToken.substring(0, 50) + '...'
-    });
 
     const response: AccessToken = {
       accessToken

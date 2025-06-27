@@ -1,4 +1,5 @@
 import { auth0 } from '@/lib/auth0';
+import Image from 'next/image';
 
 export default async function AuthButton() {
   const session = await auth0.getSession();
@@ -9,10 +10,12 @@ export default async function AuthButton() {
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
           {user.picture && (
-            <img 
+            <Image
               src={user.picture} 
               alt={user.name || 'User'} 
               className="w-8 h-8 rounded-full"
+              width={100}
+              height={100}
             />
           )}
           <span className="text-white font-medium">

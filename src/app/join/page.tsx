@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import NFTSelector from '@/components/NFTSelector';
 import { NFT, Match } from '@/types';
+import Image from 'next/image';
 
 export default function JoinMatchPage() {
   const [matchId, setMatchId] = useState('');
@@ -165,10 +166,12 @@ export default function JoinMatchPage() {
                   <h3 className="text-lg font-bold text-white mb-2">Staked NFT</h3>
                   <div className="flex items-center space-x-3">
                     <div className="w-16 h-20 rounded-lg overflow-hidden">
-                      <img
+                      <Image
                         src={matchInfo.nftA.image}
                         alt={matchInfo.nftA.name}
                         className="w-full h-full object-cover"
+                        width={100}
+                        height={100}
                       />
                     </div>
                     <div>
