@@ -70,13 +70,13 @@ export async function POST(request: NextRequest) {
         id: matchId,
         status: 'READY',
         playerA: {
-          id: uuidv4(),
+          id: opponent.userId, // Use Auth0 user ID instead of random UUID
           name: opponent.userName,
           avatar: opponent.userAvatar,
           flowAddress: opponent.flowAddress
         },
         playerB: {
-          id: uuidv4(),
+          id: userId, // Use Auth0 user ID instead of random UUID
           name: userName,
           avatar: userAvatar,
           flowAddress: flowAddress

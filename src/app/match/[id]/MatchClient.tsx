@@ -4,6 +4,10 @@ import Link from 'next/link';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Match, Question, Player } from '@/types';
 import Image from 'next/image';
+import { useSound } from '@/hooks/useSound';
+import ShotClock from '@/components/ShotClock';
+import Navbar from '@/components/Navbar';
+import AnimatedButton from '@/components/AnimatedButton';
 
 interface MatchClientProps {
   id: string;
@@ -12,35 +16,66 @@ interface MatchClientProps {
 // Component for the finished game screen with NFT transfer functionality
 function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | null }) {
   const [isTransferring, setIsTransferring] = useState(false);
-  const [transferStatus, setTransferStatus] = useState<string | null>(null);
-  const [transferError, setTransferError] = useState<string | null>(null);
+  const [myTransferStatus, setMyTransferStatus] = useState<string | null>(null);
+  const [myTransferError, setMyTransferError] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // Set transfer status from match data
+  // Get current user ID
   useEffect(() => {
-    if (match.winner !== 'TIE') {
-      setTransferStatus(match.nftTransferStatus || 'PENDING');
-      setTransferError(match.nftTransferError || null);
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const userData = await response.json();
+          setCurrentUserId(userData.sub);
+        }
+      } catch (error) {
+        console.error('Error fetching current user:', error);
+      }
+    };
+    fetchCurrentUser();
+  }, []);
+
+  // Set transfer status from match data based on current user
+  useEffect(() => {
+    if (match.winner !== 'TIE' && currentUserId) {
+      const isPlayerA = match.playerA.id === currentUserId;
+      const isPlayerB = match.playerB?.id === currentUserId;
+      const userIsLoser = (isPlayerA && match.winner === 'B') || (isPlayerB && match.winner === 'A');
+      
+      if (userIsLoser) {
+        const userPlayer = isPlayerA ? 'A' : 'B';
+        const statusKey = `nftTransfer${userPlayer}Status` as keyof typeof match;
+        const errorKey = `nftTransfer${userPlayer}Error` as keyof typeof match;
+        
+        setMyTransferStatus((match[statusKey] as string) || 'PENDING');
+        setMyTransferError((match[errorKey] as string) || null);
+      } else {
+        // User is winner - no transfer needed from them
+        setMyTransferStatus('NOT_REQUIRED');
+        setMyTransferError(null);
+      }
     }
-  }, [match.nftTransferStatus, match.nftTransferError, match.winner]);
+  }, [match, currentUserId]);
 
   // Periodically check for transfer completion when IN_PROGRESS
   useEffect(() => {
-    if (transferStatus === 'IN_PROGRESS') {
+    if (myTransferStatus === 'IN_PROGRESS') {
       const interval = setInterval(() => {
         checkTransferStatus();
       }, 30000); // Check every 30 seconds
 
       return () => clearInterval(interval);
     }
-  }, [transferStatus]);
+  }, [myTransferStatus]);
 
   const checkTransferStatus = async () => {
     try {
-      const response = await fetch(`/api/match/transfer-nft?matchId=${match.id}`);
+      const response = await fetch(`/api/match/transfer-my-nft?matchId=${match.id}`);
       if (response.ok) {
         const data = await response.json();
         // This will be updated via SSE, but we can show immediate feedback
-        console.log('Transfer status check:', data);
+        console.log('My transfer status check:', data);
       }
     } catch (error) {
       console.error('Error checking transfer status:', error);
@@ -49,10 +84,10 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
 
   const handleRetryTransfer = async () => {
     setIsTransferring(true);
-    setTransferError(null);
+    setMyTransferError(null);
 
     try {
-      const response = await fetch('/api/match/transfer-nft', {
+      const response = await fetch('/api/match/transfer-my-nft', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,15 +98,15 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
       const data = await response.json();
       
       if (response.ok) {
-        setTransferStatus('COMPLETED');
-        setTransferError(null);
+        setMyTransferStatus('COMPLETED');
+        setMyTransferError(null);
       } else {
-        setTransferError(data.error || 'Transfer failed');
-        setTransferStatus('FAILED');
+        setMyTransferError(data.error || 'Transfer failed');
+        setMyTransferStatus('FAILED');
       }
     } catch (error) {
-      setTransferError(error instanceof Error ? error.message : 'Unknown error');
-      setTransferStatus('FAILED');
+      setMyTransferError(error instanceof Error ? error.message : 'Unknown error');
+      setMyTransferStatus('FAILED');
     } finally {
       setIsTransferring(false);
     }
@@ -80,32 +115,68 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
   const renderTransferStatus = () => {
     if (match.winner === 'TIE') {
       return (
-        <div className="mb-8">
-          <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-4">
-            <div className="flex items-center justify-center space-x-2">
-              <div className="text-blue-400">🤝</div>
-              <span className="text-blue-200">No NFT transfers - each player keeps their NFT!</span>
+        <div style={{ marginBottom: '2rem' }}>
+          <div className="card" style={{
+            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+            border: '1px solid rgba(59, 130, 246, 0.3)'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: '0.5rem' 
+            }}>
+              <div style={{ color: '#60A5FA' }}>🤝</div>
+              <span style={{ color: '#BFDBFE' }}>No NFT transfers - each player keeps their NFT!</span>
             </div>
           </div>
         </div>
       );
     }
 
-    switch (transferStatus) {
+    switch (myTransferStatus) {
       case 'COMPLETED':
         return (
-          <div className="mb-8">
-            <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-lg p-6">
-              <div className="text-center">
-                <div className="flex items-center justify-center space-x-3 mb-3">
-                  <div className="text-green-400 text-2xl">🎊</div>
-                  <span className="text-green-200 text-lg font-semibold">NFT Transfer Complete!</span>
+          <div style={{ marginBottom: '2rem' }}>
+            <div className="card" style={{
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2))',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              padding: '1.5rem'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '0.75rem',
+                  marginBottom: '0.75rem'
+                }}>
+                  <div style={{ color: '#10B981', fontSize: '1.5rem' }}>🎊</div>
+                  <span style={{ 
+                    color: '#A7F3D0', 
+                    fontSize: '1.125rem',
+                    fontWeight: 600
+                  }}>
+                    NFT Transfer Complete!
+                  </span>
                 </div>
-                <p className="text-green-300 text-base mb-2">
+                <p style={{ 
+                  color: '#6EE7B7', 
+                  fontSize: '1rem',
+                  marginBottom: '0.5rem'
+                }}>
                   Your NFT has been successfully transferred on the Flow blockchain.
                 </p>
-                <div className="mt-4 bg-green-500/10 rounded-lg p-3">
-                  <p className="text-green-200 text-sm">
+                <div style={{
+                  marginTop: '1rem',
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                  borderRadius: '0.5rem',
+                  padding: '0.75rem'
+                }}>
+                  <p style={{ 
+                    color: '#A7F3D0', 
+                    fontSize: '0.875rem'
+                  }}>
                     🎉 <strong>Success!</strong> Check your Dapper wallet to see your new NFT collection!
                   </p>
                 </div>
@@ -116,21 +187,52 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
 
       case 'IN_PROGRESS':
         return (
-          <div className="mb-8">
-            <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-lg p-6">
-              <div className="text-center">
-                <div className="flex items-center justify-center space-x-3 mb-3">
+          <div style={{ marginBottom: '2rem' }}>
+            <div className="card" style={{
+              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(147, 51, 234, 0.2))',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              padding: '1.5rem'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '0.75rem',
+                  marginBottom: '0.75rem'
+                }}>
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
-                  <span className="text-blue-200 text-lg font-semibold">🎉 NFT Transfer In Progress!</span>
+                  <span style={{ 
+                    color: '#BFDBFE', 
+                    fontSize: '1.125rem',
+                    fontWeight: 600
+                  }}>
+                    🎉 NFT Transfer In Progress!
+                  </span>
                 </div>
-                <p className="text-blue-300 text-base mb-2">
+                <p style={{ 
+                  color: '#93C5FD', 
+                  fontSize: '1rem',
+                  marginBottom: '0.5rem'
+                }}>
                   Your NFT is being transferred on the Flow blockchain. This typically takes a few minutes to complete.
                 </p>
-                <p className="text-blue-300 text-sm">
+                <p style={{ 
+                  color: '#93C5FD', 
+                  fontSize: '0.875rem'
+                }}>
                   ✅ You can safely leave this page - the transfer will continue in the background.
                 </p>
-                <div className="mt-4 bg-blue-500/10 rounded-lg p-3">
-                  <p className="text-blue-200 text-sm">
+                <div style={{
+                  marginTop: '1rem',
+                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                  borderRadius: '0.5rem',
+                  padding: '0.75rem'
+                }}>
+                  <p style={{ 
+                    color: '#BFDBFE', 
+                    fontSize: '0.875rem'
+                  }}>
                     💡 <strong>Pro tip:</strong> Check your Dapper wallet in a few minutes to see your new NFT!
                   </p>
                 </div>
@@ -141,20 +243,41 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
 
       case 'FAILED':
         return (
-          <div className="mb-8">
-            <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-4">
-              <div className="text-center">
-                <div className="flex items-center justify-center space-x-2 mb-2">
-                  <div className="text-red-400">⚠️</div>
-                  <span className="text-red-200">NFT transfer failed</span>
+          <div style={{ marginBottom: '2rem' }}>
+            <div className="card" style={{
+              backgroundColor: 'rgba(239, 68, 68, 0.2)',
+              border: '1px solid rgba(239, 68, 68, 0.3)'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '0.5rem',
+                  marginBottom: '0.5rem'
+                }}>
+                  <div style={{ color: '#F87171' }}>⚠️</div>
+                  <span style={{ color: '#FECACA' }}>NFT transfer failed</span>
                 </div>
-                {transferError && (
-                  <p className="text-red-300 text-sm mb-3">{transferError}</p>
+                {myTransferError && (
+                  <p style={{ 
+                    color: '#FCA5A5', 
+                    fontSize: '0.875rem',
+                    marginBottom: '0.75rem'
+                  }}>
+                    {myTransferError}
+                  </p>
                 )}
                 <button
                   onClick={handleRetryTransfer}
                   disabled={isTransferring}
-                  className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-400 disabled:opacity-50"
+                  className="btn"
+                  style={{
+                    backgroundColor: '#EF4444',
+                    color: '#F8F9FA',
+                    padding: '0.5rem 1rem',
+                    opacity: isTransferring ? 0.5 : 1
+                  }}
                 >
                   {isTransferring ? 'Retrying...' : 'Retry Transfer'}
                 </button>
@@ -166,27 +289,53 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
       case 'PENDING':
       default:
         return (
-          <div className="mb-8">
-            <div className="bg-orange-500/20 border border-orange-500/30 rounded-lg p-4">
-              <div className="text-center">
-                <div className="flex items-center justify-center space-x-2 mb-2">
-                  <div className="text-orange-400">⏳</div>
-                  <span className="text-orange-200">Preparing NFT transfer...</span>
+          <div style={{ marginBottom: '2rem' }}>
+            <div className="card" style={{
+              backgroundColor: 'rgba(249, 115, 22, 0.2)',
+              border: '1px solid rgba(249, 115, 22, 0.3)'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '0.5rem',
+                  marginBottom: '0.5rem'
+                }}>
+                  <div style={{ color: '#FB923C' }}>⏳</div>
+                  <span style={{ color: '#FED7AA' }}>Preparing NFT transfer...</span>
                 </div>
-                <p className="text-orange-300 text-sm mb-3">
+                <p style={{ 
+                  color: '#FDBA74', 
+                  fontSize: '0.875rem',
+                  marginBottom: '0.75rem'
+                }}>
                   The system is setting up the NFT transfer. This should begin shortly.
                 </p>
-                <div className="space-x-2">
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                   <button
                     onClick={checkTransferStatus}
-                    className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-400"
+                    className="btn"
+                    style={{
+                      backgroundColor: '#F97316',
+                      color: '#F8F9FA',
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.875rem'
+                    }}
                   >
                     Refresh Status
                   </button>
                   <button
                     onClick={handleRetryTransfer}
                     disabled={isTransferring}
-                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-400 disabled:opacity-50"
+                    className="btn"
+                    style={{
+                      backgroundColor: '#3B82F6',
+                      color: '#F8F9FA',
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.875rem',
+                      opacity: isTransferring ? 0.5 : 1
+                    }}
                   >
                     {isTransferring ? 'Starting Transfer...' : 'Retry Transfer'}
                   </button>
@@ -198,155 +347,388 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-500 to-orange-600">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Victory Header */}
-          <div className="text-center mb-8">
-            <div className="animate-bounce mb-4">
+      return (
+      <div style={{ minHeight: '100vh' }}>
+        <Navbar />
+        <div style={{ 
+          maxWidth: '96rem', 
+          margin: '0 auto', 
+          padding: '2rem 1rem',
+          paddingTop: '6rem'
+        }}>
+        {/* Victory Banner */}
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <div style={{
+            background: match.winner === 'TIE' 
+              ? 'linear-gradient(135deg, #00C176, #0B2545)' 
+              : winner 
+              ? 'linear-gradient(135deg, #FF6E00, #E63946)' 
+              : 'linear-gradient(135deg, #0B2545, #374151)',
+            borderRadius: '1rem',
+            padding: '3rem 2rem',
+            marginBottom: '2rem',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              fontSize: '4rem',
+              marginBottom: '1rem'
+            }}>
               {match.winner === 'TIE' ? '🤝' : '🏆'}
             </div>
-            <h1 className="text-6xl font-bold text-white mb-4">
-              {match.winner === 'TIE' ? 'It&apos;s a Tie!' : 'Game Over!'}
+            <h1 style={{
+              fontSize: '4rem',
+              fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+              fontWeight: 800,
+              color: '#F8F9FA',
+              marginBottom: '1rem',
+              textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
+            }}>
+              {match.winner === 'TIE' ? 'Epic Tie Game!' : 'Game Over!'}
             </h1>
             
             {winner && (
-              <div className="mb-6">
-                <h2 className="text-4xl font-bold text-white mb-2">
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h2 style={{
+                  fontSize: '2.5rem',
+                  fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                  fontWeight: 700,
+                  color: '#F8F9FA',
+                  marginBottom: '0.5rem'
+                }}>
                   🎉 {winner.name} Wins!
                 </h2>
-                <p className="text-xl text-white/80">
+                <p style={{
+                  fontSize: '1.25rem',
+                  color: 'rgba(248, 249, 250, 0.8)'
+                }}>
                   Congratulations! You win both NFTs!
                 </p>
               </div>
             )}
           </div>
+        </div>
 
-          {/* NFT Transfer Status */}
-          {renderTransferStatus()}
-          
-          {/* Match Results */}
-          <div className="grid md:grid-cols-2 gap-8 mb-8">
-            <div className={`bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white border-2 ${
-              match.winner === 'A' ? 'border-yellow-400 bg-yellow-500/10' : 'border-white/20'
-            }`}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold">{match.playerA.name}</h3>
-                {match.winner === 'A' && <div className="text-2xl">👑</div>}
+        {/* NFT Transfer Status */}
+        {renderTransferStatus()}
+        
+        {/* Match Results */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+          gap: '2rem',
+          marginBottom: '2rem'
+        }}>
+          <div className="card" style={{
+            border: match.winner === 'A' ? '2px solid #FF6E00' : '1px solid rgba(75, 85, 99, 0.3)',
+            backgroundColor: match.winner === 'A' ? 'rgba(255, 110, 0, 0.1)' : undefined
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '1rem'
+            }}>
+              <h3 style={{
+                fontSize: '1.5rem',
+                fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                fontWeight: 700,
+                color: '#F8F9FA'
+              }}>
+                {match.playerA.name}
+              </h3>
+              {match.winner === 'A' && <div style={{ fontSize: '1.5rem' }}>👑</div>}
+            </div>
+            
+            <div style={{
+              fontSize: '3rem',
+              fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+              fontWeight: 800,
+              color: '#FF6E00',
+              marginBottom: '1.5rem',
+              textAlign: 'center'
+            }}>
+              {match.scoreA}
+            </div>
+            
+            <div style={{ position: 'relative' }}>
+              <div style={{
+                width: '10rem',
+                height: '12.5rem',
+                margin: '0 auto',
+                borderRadius: '0.5rem',
+                overflow: 'hidden',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.3)'
+              }}>
+                <img
+                  src={match.nftA.image}
+                  alt={match.nftA.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
               </div>
-              <div className="text-5xl font-bold text-orange-400 mb-6">{match.scoreA}</div>
-              <div className="relative">
-                <div className="w-40 h-50 mx-auto rounded-lg overflow-hidden shadow-lg">
-                  <img
-                    src={match.nftA.image}
-                    alt={match.nftA.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                {match.winner === 'B' && (transferStatus === 'IN_PROGRESS' || transferStatus === 'COMPLETED') && (
-                  <div className="absolute inset-0 bg-red-500/20 rounded-lg flex items-center justify-center">
-                    <div className="text-white text-center">
-                      <div className="text-2xl mb-1">➡️</div>
-                      <div className="text-sm font-bold">
-                        {transferStatus === 'IN_PROGRESS' ? 'Transferring...' : 'Transferred'}
-                      </div>
+              {match.winner === 'B' && (myTransferStatus === 'IN_PROGRESS' || myTransferStatus === 'COMPLETED') && (
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                  borderRadius: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <div style={{ color: '#F8F9FA', textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>➡️</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>
+                      {myTransferStatus === 'IN_PROGRESS' ? 'Transferring...' : 'Transferred'}
                     </div>
                   </div>
-                )}
-              </div>
-              <p className="mt-3 font-medium">{match.nftA.name}</p>
-              <p className="text-sm text-white/60">{match.nftA.rarity}</p>
-            </div>
-
-            <div className={`bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white border-2 ${
-              match.winner === 'B' ? 'border-yellow-400 bg-yellow-500/10' : 'border-white/20'
-            }`}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-2xl font-bold">{match.playerB?.name}</h3>
-                {match.winner === 'B' && <div className="text-2xl">👑</div>}
-              </div>
-              <div className="text-5xl font-bold text-blue-400 mb-6">{match.scoreB}</div>
-              <div className="relative">
-                <div className="w-40 h-50 mx-auto rounded-lg overflow-hidden shadow-lg">
-                  <img
-                    src={match.nftB!.image}
-                    alt={match.nftB!.name}
-                    className="w-full h-full object-cover"
-                  />
                 </div>
-                {match.winner === 'A' && (transferStatus === 'IN_PROGRESS' || transferStatus === 'COMPLETED') && (
-                  <div className="absolute inset-0 bg-red-500/20 rounded-lg flex items-center justify-center">
-                    <div className="text-white text-center">
-                      <div className="text-2xl mb-1">➡️</div>
-                      <div className="text-sm font-bold">
-                        {transferStatus === 'IN_PROGRESS' ? 'Transferring...' : 'Transferred'}
-                      </div>
+              )}
+            </div>
+            
+            <p style={{ 
+              marginTop: '0.75rem', 
+              fontWeight: 600,
+              color: '#F8F9FA',
+              textAlign: 'center'
+            }}>
+              {match.nftA.name}
+            </p>
+            <p style={{ 
+              fontSize: '0.875rem', 
+              color: '#9CA3AF',
+              textAlign: 'center'
+            }}>
+              {match.nftA.rarity}
+            </p>
+          </div>
+
+          <div className="card" style={{
+            border: match.winner === 'B' ? '2px solid #00C176' : '1px solid rgba(75, 85, 99, 0.3)',
+            backgroundColor: match.winner === 'B' ? 'rgba(0, 193, 118, 0.1)' : undefined
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '1rem'
+            }}>
+              <h3 style={{
+                fontSize: '1.5rem',
+                fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                fontWeight: 700,
+                color: '#F8F9FA'
+              }}>
+                {match.playerB?.name}
+              </h3>
+              {match.winner === 'B' && <div style={{ fontSize: '1.5rem' }}>👑</div>}
+            </div>
+            
+            <div style={{
+              fontSize: '3rem',
+              fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+              fontWeight: 800,
+              color: '#00C176',
+              marginBottom: '1.5rem',
+              textAlign: 'center'
+            }}>
+              {match.scoreB}
+            </div>
+            
+            <div style={{ position: 'relative' }}>
+              <div style={{
+                width: '10rem',
+                height: '12.5rem',
+                margin: '0 auto',
+                borderRadius: '0.5rem',
+                overflow: 'hidden',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.3)'
+              }}>
+                <img
+                  src={match.nftB!.image}
+                  alt={match.nftB!.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              </div>
+              {match.winner === 'A' && (myTransferStatus === 'IN_PROGRESS' || myTransferStatus === 'COMPLETED') && (
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                  borderRadius: '0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <div style={{ color: '#F8F9FA', textAlign: 'center' }}>
+                    <div style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>➡️</div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 700 }}>
+                      {myTransferStatus === 'IN_PROGRESS' ? 'Transferring...' : 'Transferred'}
                     </div>
                   </div>
-                )}
+                </div>
+              )}
+            </div>
+            
+            <p style={{ 
+              marginTop: '0.75rem', 
+              fontWeight: 600,
+              color: '#F8F9FA',
+              textAlign: 'center'
+            }}>
+              {match.nftB!.name}
+            </p>
+            <p style={{ 
+              fontSize: '0.875rem', 
+              color: '#9CA3AF',
+              textAlign: 'center'
+            }}>
+              {match.nftB!.rarity}
+            </p>
+          </div>
+        </div>
+
+        {/* Game Stats */}
+        <div className="card" style={{ marginBottom: '2rem' }}>
+          <h3 style={{
+            fontSize: '1.5rem',
+            fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+            fontWeight: 700,
+            color: '#F8F9FA',
+            marginBottom: '1rem',
+            textAlign: 'center'
+          }}>
+            📊 Match Statistics
+          </h3>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: '1.5rem',
+            textAlign: 'center'
+          }}>
+            <div>
+              <div style={{
+                fontSize: '2rem',
+                fontWeight: 700,
+                color: '#FF6E00',
+                marginBottom: '0.25rem'
+              }}>
+                {match.questions.length}
               </div>
-              <p className="mt-3 font-medium">{match.nftB!.name}</p>
-              <p className="text-sm text-white/60">{match.nftB!.rarity}</p>
+              <div style={{
+                fontSize: '0.875rem',
+                color: '#9CA3AF',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                Questions
+              </div>
+            </div>
+            <div>
+              <div style={{
+                fontSize: '2rem',
+                fontWeight: 700,
+                color: '#00C176',
+                marginBottom: '0.25rem'
+              }}>
+                {Math.abs(match.scoreA - match.scoreB)}
+              </div>
+              <div style={{
+                fontSize: '0.875rem',
+                color: '#9CA3AF',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                Point Difference
+              </div>
+            </div>
+            <div>
+              <div style={{
+                fontSize: '2rem',
+                fontWeight: 700,
+                color: '#E63946',
+                marginBottom: '0.25rem'
+              }}>
+                {match.scoreA + match.scoreB}
+              </div>
+              <div style={{
+                fontSize: '0.875rem',
+                color: '#9CA3AF',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                Total Points
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Game Stats */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-8">
-            <h3 className="text-2xl font-bold text-white mb-4 text-center">📊 Match Statistics</h3>
-            <div className="grid md:grid-cols-3 gap-6 text-center">
-              <div className="text-white">
-                <div className="text-3xl font-bold text-orange-400">{match.questions.length}</div>
-                <div className="text-sm text-white/70">Questions</div>
-              </div>
-              <div className="text-white">
-                <div className="text-3xl font-bold text-blue-400">
-                  {Math.abs(match.scoreA - match.scoreB)}
-                </div>
-                <div className="text-sm text-white/70">Point Difference</div>
-              </div>
-              <div className="text-white">
-                <div className="text-3xl font-bold text-green-400">
-                  {match.scoreA + match.scoreB}
-                </div>
-                <div className="text-sm text-white/70">Total Points</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-            <Link
-              href="/create"
-              className="bg-orange-500 text-white px-8 py-4 rounded-lg font-bold text-xl hover:bg-orange-400 transform hover:scale-105 transition-all text-center"
-            >
-              🚀 Create New Match
-            </Link>
-            <Link
-              href="/automatch"
-              className="bg-purple-500 text-white px-8 py-4 rounded-lg font-bold text-xl hover:bg-purple-400 transform hover:scale-105 transition-all text-center"
-            >
-              ⚡ Quick Match
-            </Link>
-            <button
-              onClick={() => {
-                const tweetText = match.winner === 'TIE' 
-                  ? `Just played an epic NBA trivia showdown that ended in a tie! 🤝 Final score: ${match.scoreA}-${match.scoreB} #HoopsTrivia #NBATopShot`
-                  : `Just ${winner ? 'won' : 'played'} an epic NBA trivia showdown! 🏀 Final score: ${match.scoreA}-${match.scoreB} ${winner ? `Winner: ${winner.name} 🏆` : ''} #HoopsTrivia #NBATopShot`;
-                const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
-                window.open(tweetUrl, '_blank');
-              }}
-              className="bg-blue-500 text-white px-8 py-4 rounded-lg font-bold text-xl hover:bg-blue-400 transform hover:scale-105 transition-all text-center"
-            >
-              🐦 Share Result
-            </button>
-            <Link
-              href="/"
-              className="bg-white text-orange-600 px-8 py-4 rounded-lg font-bold text-xl hover:bg-gray-100 transform hover:scale-105 transition-all text-center"
-            >
-              🏠 Home
-            </Link>
-          </div>
+        {/* Action Buttons */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '1rem',
+          marginBottom: '2rem'
+        }}>
+          <Link
+            href="/create"
+            className="btn btn-primary"
+            style={{
+              fontSize: '1.125rem',
+              fontWeight: 700,
+              padding: '1rem 2rem',
+              textAlign: 'center',
+              textDecoration: 'none'
+            }}
+          >
+            🚀 Create New Match
+          </Link>
+          <Link
+            href="/automatch"
+            className="btn"
+            style={{
+              fontSize: '1.125rem',
+              fontWeight: 700,
+              padding: '1rem 2rem',
+              backgroundColor: '#8B5CF6',
+              color: '#F8F9FA',
+              textAlign: 'center',
+              textDecoration: 'none'
+            }}
+          >
+            ⚡ Quick Match
+          </Link>
+          <button
+            onClick={() => {
+              const tweetText = match.winner === 'TIE' 
+                ? `Just played an epic NBA trivia showdown that ended in a tie! 🤝 Final score: ${match.scoreA}-${match.scoreB} #HoopsTrivia #NBATopShot`
+                : `Just ${winner ? 'won' : 'played'} an epic NBA trivia showdown! 🏀 Final score: ${match.scoreA}-${match.scoreB} ${winner ? `Winner: ${winner.name} 🏆` : ''} #HoopsTrivia #NBATopShot`;
+              const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+              window.open(tweetUrl, '_blank');
+            }}
+            className="btn"
+            style={{
+              fontSize: '1.125rem',
+              fontWeight: 700,
+              padding: '1rem 2rem',
+              backgroundColor: '#3B82F6',
+              color: '#F8F9FA'
+            }}
+          >
+            🐦 Share Result
+          </button>
+          <Link
+            href="/"
+            className="btn btn-secondary"
+            style={{
+              fontSize: '1.125rem',
+              fontWeight: 700,
+              padding: '1rem 2rem',
+              textAlign: 'center',
+              textDecoration: 'none'
+            }}
+          >
+            🏠 Home Court
+          </Link>
         </div>
       </div>
     </div>
@@ -357,15 +739,46 @@ export default function MatchClient({ id }: MatchClientProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(24);
   const [hasAnswered, setHasAnswered] = useState<boolean>(false);
+  const [showFeedback, setShowFeedback] = useState<boolean>(false);
   const [matchData, setMatchData] = useState<Match | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [finishedMatchData, setFinishedMatchData] = useState<Match | null>(null); // Persist finished match data
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const maxReconnectAttempts = 3;
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
+
+  // Sound effects
+  const buzzerSound = useSound('/sfx/buzzer.mp3');
+  const swishSound = useSound('/sfx/swish.mp3');
+  const cheerSound = useSound('/sfx/cheer.mp3');
+  const beepSound = useSound('/sfx/beep.mp3');
+
+  // Get current user ID
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      try {
+        console.log('[USER] Fetching current user...');
+        const response = await fetch('/api/auth/me');
+        console.log('[USER] Response status:', response.status);
+        if (response.ok) {
+          const userData = await response.json();
+          console.log('[USER] User data received:', userData);
+          console.log('[USER] User sub:', userData.sub);
+          setCurrentUserId(userData.sub);
+          console.log('[USER] Current user ID set to:', userData.sub);
+        } else {
+          console.error('[USER] Response not OK:', response.status);
+        }
+      } catch (error) {
+        console.error('[USER] Failed to get current user:', error);
+      }
+    };
+    getCurrentUser();
+  }, []);
 
   // Function to fetch match data as fallback
   const fetchMatchData = useCallback(async () => {
@@ -385,6 +798,21 @@ export default function MatchClient({ id }: MatchClientProps) {
   // SSE connection for real-time match updates
   useEffect(() => {
     if (!id) return;
+
+    // First, try to fetch match data to ensure it exists
+    const initializeMatch = async () => {
+      console.log(`[MATCH] Initializing match ${id}`);
+      const initialMatch = await fetchMatchData();
+      if (initialMatch) {
+        setMatchData(initialMatch);
+        console.log(`[MATCH] Initial match data loaded, status: ${initialMatch.status}`);
+        // Now start SSE connection
+        connectSSE();
+      } else {
+        setError('Match not found');
+        console.error(`[MATCH] Match ${id} not found`);
+      }
+    };
 
     const connectSSE = () => {
       console.log(`[MATCH SSE] Connecting to match ${id} (attempt ${reconnectAttempts + 1})`);
@@ -423,6 +851,8 @@ export default function MatchClient({ id }: MatchClientProps) {
               setMatchData(data.match);
               setFinishedMatchData(data.match); // Persist finished match data
               console.log('[MATCH SSE] Match finished, data persisted');
+              // Play victory sound
+              cheerSound.play();
               break;
             case 'match_deleted':
               // Only show error if we don't have finished match data
@@ -483,8 +913,8 @@ export default function MatchClient({ id }: MatchClientProps) {
       };
     };
 
-    // Initial connection
-    connectSSE();
+    // Initialize match and start SSE
+    initializeMatch();
 
     // Cleanup on unmount
     return () => {
@@ -511,6 +941,8 @@ export default function MatchClient({ id }: MatchClientProps) {
         setTimeLeft((prev) => {
           if (prev <= 1) {
             setHasAnswered(true);
+            // Play buzzer sound when time runs out
+            buzzerSound.play();
             // Auto-submit when time runs out - call directly to avoid dependency issues
             fetch('/api/match/answer', {
               method: 'POST',
@@ -519,7 +951,8 @@ export default function MatchClient({ id }: MatchClientProps) {
                 matchId: id,
                 questionId: currentQuestion?.id,
                 selectedOption: -1,
-                timeRemaining: 0
+                timeRemaining: 0,
+                playerId: currentUserId
               })
             }).catch(error => {
               console.error('Error submitting timeout answer:', error);
@@ -527,20 +960,26 @@ export default function MatchClient({ id }: MatchClientProps) {
             });
             return 0;
           }
+          // Play beep sound in last 5 seconds
+          if (prev <= 5) {
+            beepSound.play();
+          }
           return prev - 1;
         });
       }, 1000);
 
       return () => clearInterval(timer);
     }
-  }, [match?.currentQuestionIndex, hasAnswered, currentQuestion, match?.status, id]);
+  }, [match?.currentQuestionIndex, hasAnswered, match?.status, id]); // Removed currentQuestion to prevent timer reset on match updates
 
   // Reset answer state when question changes
   useEffect(() => {
     if (match?.currentQuestionIndex !== undefined) {
+      console.log(`[QUESTION] Question changed to index ${match.currentQuestionIndex}`);
       setSelectedAnswer(null);
       setHasAnswered(false);
       setTimeLeft(24);
+      setShowFeedback(false);
     }
   }, [match?.currentQuestionIndex]);
 
@@ -574,6 +1013,9 @@ export default function MatchClient({ id }: MatchClientProps) {
     setHasAnswered(true);
     
     try {
+      console.log('[ANSWER] Current user ID state:', currentUserId);
+      console.log('[ANSWER] Submitting answer:', { answerIndex, timeRemaining, playerId: currentUserId });
+      
       const response = await fetch('/api/match/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -581,7 +1023,8 @@ export default function MatchClient({ id }: MatchClientProps) {
           matchId: id,
           questionId: currentQuestion?.id,
           selectedOption: answerIndex,
-          timeRemaining
+          timeRemaining,
+          playerId: currentUserId // Include player ID for proper identification
         })
       });
       
@@ -600,6 +1043,21 @@ export default function MatchClient({ id }: MatchClientProps) {
   const handleAnswerSelect = (answerIndex: number) => {
     if (hasAnswered) return;
     setSelectedAnswer(answerIndex);
+    setHasAnswered(true);
+    
+    // Show feedback and play sound for valid answer selection
+    if (currentQuestion && answerIndex >= 0) {
+      setShowFeedback(true);
+      
+      // Play swish sound for answer selection
+      swishSound.play();
+      
+      // Hide feedback after 2 seconds
+      setTimeout(() => {
+        setShowFeedback(false);
+      }, 2000);
+    }
+    
     submitAnswer(answerIndex, timeLeft);
   };
 
@@ -633,9 +1091,9 @@ export default function MatchClient({ id }: MatchClientProps) {
             >
               Refresh Page
             </button>
-            <Link href="/" className="bg-white text-red-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100">
-              Back to Home
-            </Link>
+          <Link href="/" className="bg-white text-red-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100">
+            Back to Home
+          </Link>
           </div>
         </div>
       </div>
@@ -668,42 +1126,91 @@ export default function MatchClient({ id }: MatchClientProps) {
   // Match lobby (waiting for opponent)
   if (match.status === 'PENDING') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-4xl font-bold text-white mb-8">Waiting for Opponent...</h1>
-            
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-8 mb-8">
-              <p className="text-white text-xl mb-6">Share this Match ID with your opponent:</p>
-              <div className="bg-black/20 rounded-lg p-4 font-mono text-white text-lg break-all">
-                {match.id}
-              </div>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(match.id);
-                  alert('Match ID copied to clipboard!');
-                }}
-                className="mt-4 bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-400"
-              >
-                Copy Match ID
-              </button>
+      <div style={{ minHeight: '100vh' }}>
+        <Navbar />
+        <div style={{ 
+          maxWidth: '56rem', 
+          margin: '0 auto', 
+          padding: '2rem 1rem',
+          paddingTop: '6rem',
+          textAlign: 'center'
+        }}>
+          <h1 style={{
+            fontSize: '2.5rem',
+            fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+            fontWeight: 700,
+            color: '#F8F9FA',
+            marginBottom: '2rem'
+          }}>
+            ⏳ Waiting for Opponent...
+          </h1>
+          
+          <div className="card" style={{ marginBottom: '2rem' }}>
+            <p style={{
+              color: '#F8F9FA',
+              fontSize: '1.25rem',
+              marginBottom: '1.5rem'
+            }}>
+              Share this Match ID with your opponent:
+            </p>
+            <div style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.3)',
+              borderRadius: '0.5rem',
+              padding: '1rem',
+              fontFamily: 'monospace',
+              color: '#F8F9FA',
+              fontSize: '1.125rem',
+              wordBreak: 'break-all',
+              marginBottom: '1rem'
+            }}>
+              {match.id}
             </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(match.id);
+                alert('Match ID copied to clipboard!');
+              }}
+              className="btn btn-primary"
+            >
+              📋 Copy Match ID
+            </button>
+          </div>
 
-            <div className="animate-pulse">
-              <div className="text-6xl mb-4">⏳</div>
-              <p className="text-white text-xl">Waiting for player to join...</p>
-              <div className="mt-4 flex justify-center">
-                <div className="animate-bounce text-orange-300">●</div>
-                <div className="animate-bounce text-orange-300 mx-1" style={{animationDelay: '0.1s'}}>●</div>
-                <div className="animate-bounce text-orange-300" style={{animationDelay: '0.2s'}}>●</div>
-              </div>
+          <div className="animate-pulse">
+            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>⏳</div>
+            <p style={{
+              color: '#F8F9FA',
+              fontSize: '1.25rem',
+              marginBottom: '1rem'
+            }}>
+              Waiting for player to join the arena...
+            </p>
+            <div style={{ 
+              marginTop: '1rem', 
+              display: 'flex', 
+              justifyContent: 'center',
+              gap: '0.25rem'
+            }}>
+              <div className="animate-bounce" style={{ color: '#FF6E00' }}>●</div>
+              <div className="animate-bounce" style={{ color: '#FF6E00', animationDelay: '0.1s' }}>●</div>
+              <div className="animate-bounce" style={{ color: '#FF6E00', animationDelay: '0.2s' }}>●</div>
             </div>
+          </div>
 
-            <div className="mt-8">
-              <Link href="/" className="text-white hover:text-orange-200 transition-colors">
-                ← Back to Home
-              </Link>
-            </div>
+          <div style={{ marginTop: '2rem' }}>
+            <Link 
+              href="/" 
+              style={{
+                color: '#F8F9FA',
+                textDecoration: 'none',
+                opacity: 0.8,
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+            >
+              ← Back to Home
+            </Link>
           </div>
         </div>
       </div>
@@ -713,50 +1220,97 @@ export default function MatchClient({ id }: MatchClientProps) {
   // Match ready - show start button
   if (match.status === 'READY') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-500 to-blue-600">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-4xl font-bold text-white mb-8">Match Ready!</h1>
-            
-            <div className="grid md:grid-cols-2 gap-8 mb-8">
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white">
-                <h2 className="text-2xl font-bold mb-4">{match.playerA.name}</h2>
-                                  <div className="w-32 h-40 mx-auto mb-4 rounded-lg overflow-hidden">
-                    <Image
-                      src={match.nftA.image}
-                      alt={match.nftA.name}
-                      className="w-full h-full object-cover"
-                      width={100}
-                      height={100}
-                    />
-                </div>
-                <p>{match.nftA.name}</p>
+      <div style={{ minHeight: '100vh' }}>
+        <Navbar />
+        <div style={{ 
+          maxWidth: '64rem', 
+          margin: '0 auto', 
+          padding: '2rem 1rem',
+          paddingTop: '6rem',
+          textAlign: 'center'
+        }}>
+          <h1 style={{
+            fontSize: '2.5rem',
+            fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+            fontWeight: 700,
+            color: '#F8F9FA',
+            marginBottom: '2rem'
+          }}>
+            🏀 Match Ready!
+          </h1>
+          
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '2rem',
+            marginBottom: '2rem'
+          }}>
+            <div className="card">
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                fontWeight: 700,
+                color: '#F8F9FA',
+                marginBottom: '1rem'
+              }}>
+                {match.playerA.name}
+              </h2>
+              <div style={{
+                width: '8rem',
+                height: '10rem',
+                margin: '0 auto 1rem auto',
+                borderRadius: '0.5rem',
+                overflow: 'hidden'
+              }}>
+                <Image
+                  src={match.nftA.image}
+                  alt={match.nftA.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  width={100}
+                  height={100}
+                />
               </div>
-
-              {match.playerB && (
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white">
-                  <h2 className="text-2xl font-bold mb-4">{match.playerB.name}</h2>
-                                      <div className="w-32 h-40 mx-auto mb-4 rounded-lg overflow-hidden">
-                      <Image
-                        src={match.nftB!.image}
-                        alt={match.nftB!.name}
-                        className="w-full h-full object-cover"
-                        width={100}
-                        height={100}
-                      />
-                  </div>
-                  <p>{match.nftB!.name}</p>
-                </div>
-              )}
+              <p style={{ color: '#D1D5DB' }}>{match.nftA.name}</p>
             </div>
 
-            <button
-              onClick={startGame}
-              className="bg-white text-green-600 px-8 py-4 rounded-lg font-bold text-xl hover:bg-gray-100 transform hover:scale-105 transition-all"
-            >
-              Start Game! 🏀
-            </button>
+            {match.playerB && (
+              <div className="card">
+                <h2 style={{
+                  fontSize: '1.5rem',
+                  fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                  fontWeight: 700,
+                  color: '#F8F9FA',
+                  marginBottom: '1rem'
+                }}>
+                  {match.playerB.name}
+                </h2>
+                <div style={{
+                  width: '8rem',
+                  height: '10rem',
+                  margin: '0 auto 1rem auto',
+                  borderRadius: '0.5rem',
+                  overflow: 'hidden'
+                }}>
+                  <Image
+                    src={match.nftB!.image}
+                    alt={match.nftB!.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    width={100}
+                    height={100}
+                  />
+                </div>
+                <p style={{ color: '#D1D5DB' }}>{match.nftB!.name}</p>
+              </div>
+            )}
           </div>
+
+          <button
+            onClick={startGame}
+            className="btn btn-primary"
+            style={{ fontSize: '1.25rem', padding: '1rem 2rem' }}
+          >
+            Start Game! 🏀
+          </button>
         </div>
       </div>
     );
@@ -765,76 +1319,183 @@ export default function MatchClient({ id }: MatchClientProps) {
   // Game in progress
   if (match.status === 'IN_PROGRESS' && currentQuestion) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-800">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-4xl mx-auto">
-            {/* Game Header */}
-            <div className="flex justify-between items-center mb-8 text-white">
-              <div className="text-center">
-                <h3 className="text-lg font-bold">{match.playerA.name}</h3>
-                <div className="text-3xl font-bold text-orange-400">{match.scoreA}</div>
-              </div>
-              
-              <div className="text-center">
-                <div className="text-sm text-gray-300">Question {(match.currentQuestionIndex || 0) + 1} of {match.questions.length}</div>
-                <div className={`text-6xl font-bold ${timeLeft <= 5 ? 'text-red-400 animate-pulse' : 'text-white'}`}>
-                  {timeLeft}
-                </div>
-                <div className="text-sm text-gray-300">seconds</div>
-              </div>
-              
-              <div className="text-center">
-                <h3 className="text-lg font-bold">{match.playerB?.name}</h3>
-                <div className="text-3xl font-bold text-blue-400">{match.scoreB}</div>
+      <div style={{ minHeight: '100vh' }}>
+        <Navbar />
+        <div style={{ 
+          maxWidth: '80rem', 
+          margin: '0 auto', 
+          padding: '1rem',
+          paddingTop: '5rem' // Reduced padding to prevent overlap
+        }}>
+          {/* Game Header */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr auto 1fr',
+            alignItems: 'center',
+            marginBottom: '1.5rem',
+            gap: '1rem'
+          }}>
+            {/* Player A Score */}
+            <div style={{ textAlign: 'center', minWidth: '120px' }}>
+              <h3 style={{
+                fontSize: '1.125rem',
+                fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                fontWeight: 700,
+                color: '#F8F9FA',
+                marginBottom: '0.5rem'
+              }}>
+                {match.playerA.name}
+              </h3>
+              <div style={{
+                fontSize: '2rem',
+                fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                fontWeight: 700,
+                color: '#FF6E00'
+              }}>
+                {match.scoreA}
               </div>
             </div>
+            
+            {/* Shot Clock Timer */}
+            <div style={{ textAlign: 'center', flex: 1 }}>
+              <div style={{
+                fontSize: '0.875rem',
+                color: '#D1D5DB',
+                marginBottom: '0.5rem'
+              }}>
+                Question {(match.currentQuestionIndex || 0) + 1} of {match.questions.length}
+              </div>
+              <ShotClock 
+                duration={24}
+                timeLeft={timeLeft}
+                onTimeUp={() => {
+                  buzzerSound.play();
+                  handleAnswerSelect(-1); // Auto-submit when time runs out
+                }}
+                isActive={!hasAnswered}
+                size="lg"
+              />
+              <div style={{
+                fontSize: '0.875rem',
+                color: '#D1D5DB',
+                marginTop: '0.5rem'
+              }}>
+                seconds
+              </div>
+            </div>
+            
+            {/* Player B Score */}
+            <div style={{ textAlign: 'right', minWidth: '120px' }}>
+              <h3 style={{
+                fontSize: '1.125rem',
+                fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                fontWeight: 700,
+                color: '#F8F9FA',
+                marginBottom: '0.5rem'
+              }}>
+                {match.playerB?.name}
+              </h3>
+              <div style={{
+                fontSize: '2rem',
+                fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                fontWeight: 700,
+                color: '#00C176'
+              }}>
+                {match.scoreB}
+              </div>
+            </div>
+          </div>
 
-            {/* Waiting for opponent indicator */}
-            {waitingForOpponent && (
-              <div className="text-center mb-6">
-                <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4">
-                  <div className="flex items-center justify-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
-                    <span className="text-yellow-200">Waiting for opponent&apos;s answer...</span>
-                  </div>
+          {/* Waiting for opponent indicator */}
+          {waitingForOpponent && (
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div className="card" style={{
+                backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                border: '1px solid rgba(245, 158, 11, 0.3)'
+              }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '0.5rem' 
+                }}>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
+                  <span style={{ color: '#FDE68A' }}>Waiting for opponent&apos;s answer...</span>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Question */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-8 mb-8">
-              <h2 className="text-2xl font-bold text-white mb-6 text-center">
-                {currentQuestion.question}
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {currentQuestion.options.map((option, index) => (
-                  <button
+          {/* Question */}
+          <div className="card" style={{ marginBottom: '2rem' }}>
+            <h2 style={{
+              fontSize: '1.5rem',
+              fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+              fontWeight: 700,
+              color: '#F8F9FA',
+              marginBottom: '1.5rem',
+              textAlign: 'center',
+              lineHeight: '1.4'
+            }}>
+              {currentQuestion.question}
+            </h2>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: '1rem'
+            }}>
+              {currentQuestion.options.map((option, index) => {
+                const isSelected = selectedAnswer === index;
+                const isCorrect = index === currentQuestion.correctAnswer;
+                const feedbackState = showFeedback 
+                  ? (isSelected && isCorrect ? 'correct' : isSelected && !isCorrect ? 'incorrect' : 'neutral')
+                  : 'neutral';
+                
+                return (
+                  <AnimatedButton
                     key={index}
                     onClick={() => handleAnswerSelect(index)}
                     disabled={hasAnswered}
-                    className={`p-4 rounded-lg text-left transition-all duration-200 ${
-                      selectedAnswer === index
-                        ? 'bg-orange-500 text-white transform scale-105'
-                        : hasAnswered
-                        ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                        : 'bg-white/20 text-white hover:bg-white/30 hover:transform hover:scale-105'
-                    }`}
+                    variant={isSelected ? 'primary' : 'secondary'}
+                    feedbackState={feedbackState}
+                    className={`text-left ${hasAnswered && !isSelected ? 'opacity-50' : ''}`}
                   >
-                    <span className="font-bold mr-2">{String.fromCharCode(65 + index)}.</span>
-                    {option}
-                  </button>
-                ))}
-              </div>
-              
-              {hasAnswered && (
-                <div className="text-center mt-6">
-                  <div className="text-green-400 font-bold">
-                    ✓ Answer submitted!
-                  </div>
-                </div>
-              )}
+                    <span style={{ 
+                      fontWeight: 700, 
+                      marginRight: '0.5rem',
+                      color: isSelected ? '#F8F9FA' : '#FF6E00'
+                    }}>
+                      {String.fromCharCode(65 + index)}.
+                    </span>
+                    <span style={{
+                      color: isSelected ? '#F8F9FA' : '#F8F9FA'
+                    }}>
+                      {option}
+                    </span>
+                  </AnimatedButton>
+                );
+              })}
             </div>
+            
+            {hasAnswered && (
+              <div style={{ 
+                textAlign: 'center', 
+                marginTop: '1.5rem',
+                padding: '1rem',
+                backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                borderRadius: '0.5rem',
+                border: '1px solid rgba(16, 185, 129, 0.3)'
+              }}>
+                <div style={{ 
+                  color: '#10B981', 
+                  fontWeight: 700,
+                  fontSize: '1.125rem'
+                }}>
+                  ✓ Answer submitted!
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

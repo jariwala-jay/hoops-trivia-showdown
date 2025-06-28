@@ -4,6 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import NFTSelector from '@/components/NFTSelector';
+import Navbar from '@/components/Navbar';
+import Container from '@/components/Container';
+import Card from '@/components/Card';
+import AnimatedButton from '@/components/AnimatedButton';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { NFT } from '@/types';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
@@ -75,116 +80,197 @@ export default function CreateMatchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <Link 
-            href="/" 
-            className="text-white hover:text-orange-200 transition-colors"
-          >
-            ← Back to Home
-          </Link>
-          <h1 className="text-4xl font-bold text-white">Create Match</h1>
-          <div className="w-24"></div> {/* Spacer for centering */}
-        </div>
+    <>
+      <Navbar />
+      <div style={{ 
+        minHeight: '100vh',
+        paddingTop: '4rem'
+      }}>
+        <Container>
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '2rem',
+            paddingTop: '2rem'
+          }}>
+            <Link 
+              href="/" 
+              style={{
+                color: '#F8F9FA',
+                textDecoration: 'none',
+                opacity: 0.8,
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+            >
+              ← Back to Home
+            </Link>
+            <h1 style={{
+              fontSize: '2.5rem',
+              fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+              fontWeight: 700,
+              color: '#F8F9FA',
+              textAlign: 'center'
+            }}>
+              🚀 Create Match
+            </h1>
+            <div style={{ width: '120px' }}></div>
+          </div>
 
-        <div className="max-w-6xl mx-auto">
+          {/* Error Display */}
           {error && (
-            <div className="mb-6 mx-auto max-w-md">
-              <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-4">
-                <div className="flex items-center space-x-2">
-                  <div className="text-red-400">⚠️</div>
-                  <span className="text-red-200">{error}</span>
+            <div style={{ marginBottom: '1.5rem', maxWidth: '28rem', margin: '0 auto 1.5rem auto' }}>
+              <Card className="bg-red-500/20 border border-red-500/30">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ color: '#F87171' }}>⚠️</div>
+                  <span style={{ color: '#FECACA' }}>{error}</span>
                 </div>
-              </div>
+              </Card>
             </div>
           )}
 
           {/* NFT Selection */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-8">
-            <h2 className="text-2xl font-bold text-white mb-4">Select Your NFT to Stake</h2>
-            <p className="text-orange-100 mb-6">
-              Choose the NFT you want to stake in this match. Winner takes all!
-            </p>
-            
-            <NFTSelector
-              selectedNFT={selectedNFT}
-              onSelect={setSelectedNFT}
-            />
+          <div style={{ marginBottom: '2rem' }}>
+            <Card>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                fontWeight: 700,
+                color: '#F8F9FA',
+                marginBottom: '1rem'
+              }}>
+                Select Your NFT to Stake
+              </h2>
+              <p style={{
+                color: '#D1D5DB',
+                marginBottom: '1.5rem',
+                lineHeight: '1.5'
+              }}>
+                Choose the NFT you want to stake in this match. Winner takes all!
+              </p>
+              
+              <NFTSelector
+                selectedNFT={selectedNFT}
+                onSelect={setSelectedNFT}
+              />
+            </Card>
           </div>
 
           {/* Selected NFT Preview */}
           {selectedNFT && (
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-8">
-              <h2 className="text-2xl font-bold text-white mb-4">Selected NFT</h2>
-              <div className="flex items-center space-x-4">
-                <div className="w-24 h-32 relative rounded-lg overflow-hidden">
-                  <Image
-                    src={selectedNFT.image}
-                    alt={selectedNFT.name}
-                    className="w-full h-full object-cover"
-                    width={100}
-                    height={100}
-                  />
+            <div style={{ marginBottom: '2rem' }}>
+              <Card>
+                <h2 style={{
+                  fontSize: '1.5rem',
+                  fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                  fontWeight: 700,
+                  color: '#F8F9FA',
+                  marginBottom: '1rem'
+                }}>
+                  Selected NFT
+                </h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{
+                    width: '6rem',
+                    height: '8rem',
+                    borderRadius: '0.5rem',
+                    overflow: 'hidden',
+                    position: 'relative'
+                  }}>
+                    <Image
+                      src={selectedNFT.image}
+                      alt={selectedNFT.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      width={100}
+                      height={100}
+                    />
+                  </div>
+                  <div>
+                    <h3 style={{
+                      fontSize: '1.25rem',
+                      fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                      fontWeight: 700,
+                      color: '#F8F9FA',
+                      marginBottom: '0.25rem'
+                    }}>
+                      {selectedNFT.name}
+                    </h3>
+                    <p style={{ color: '#D1D5DB', marginBottom: '0.5rem' }}>
+                      {selectedNFT.collection}
+                    </p>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      ...(selectedNFT.rarity?.toLowerCase() === 'legendary' ? 
+                        { backgroundColor: 'rgba(251, 191, 36, 0.2)', color: '#FBBF24' } :
+                        selectedNFT.rarity?.toLowerCase() === 'epic' ? 
+                        { backgroundColor: 'rgba(168, 85, 247, 0.2)', color: '#A855F7' } :
+                        selectedNFT.rarity?.toLowerCase() === 'rare' ? 
+                        { backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#3B82F6' } :
+                        { backgroundColor: 'rgba(156, 163, 175, 0.2)', color: '#9CA3AF' })
+                    }}>
+                      {selectedNFT.rarity}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white">{selectedNFT.name}</h3>
-                  <p className="text-orange-100">{selectedNFT.collection}</p>
-                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium mt-2 ${
-                    selectedNFT.rarity?.toLowerCase() === 'legendary' ? 'bg-yellow-400/20 text-yellow-400' :
-                    selectedNFT.rarity?.toLowerCase() === 'epic' ? 'bg-purple-400/20 text-purple-400' :
-                    selectedNFT.rarity?.toLowerCase() === 'rare' ? 'bg-blue-400/20 text-blue-400' :
-                    'bg-gray-400/20 text-gray-400'
-                  }`}>
-                    {selectedNFT.rarity}
-                  </span>
+                
+                <div style={{
+                  marginTop: '1rem',
+                  padding: '1rem',
+                  backgroundColor: 'rgba(255, 110, 0, 0.1)',
+                  borderRadius: '0.5rem',
+                  border: '1px solid rgba(255, 110, 0, 0.2)'
+                }}>
+                  <p style={{ color: '#FF6E00', fontSize: '0.875rem' }}>
+                    💡 <strong>Arena Rules:</strong> Only players with {selectedNFT.rarity} rarity NFTs can join this match. 
+                    Your opponent must stake an NFT of the same rarity level.
+                  </p>
                 </div>
-              </div>
+              </Card>
             </div>
           )}
 
           {/* Create Button */}
-          <div className="text-center">
-            <button
-              onClick={handleCreateMatch}
-              disabled={!selectedNFT || isCreating || momentsLoading || !flowAddress}
-              className={`px-8 py-4 rounded-xl font-bold text-xl transition-all duration-200 ${
-                !selectedNFT || isCreating || momentsLoading || !flowAddress
-                  ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
-                  : 'bg-orange-500 text-white hover:bg-orange-400 transform hover:scale-105 shadow-lg hover:shadow-xl'
-              }`}
-            >
-              {isCreating ? (
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  <span>Creating Match...</span>
-                </div>
-              ) : (
-                <>
-                  🚀 Create Match
-                </>
-              )}
-            </button>
-            
-            {momentsLoading && (
-              <p className="text-orange-200 mt-4">
-                Loading your Flow address...
-              </p>
+          <div style={{ textAlign: 'center' }}>
+            {momentsLoading ? (
+              <LoadingSpinner size="lg" text="Loading your Flow address..." />
+            ) : (
+              <AnimatedButton
+                onClick={handleCreateMatch}
+                disabled={!selectedNFT || isCreating || !flowAddress}
+                variant="primary"
+                size="lg"
+              >
+                {isCreating ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span>Creating Match...</span>
+                  </div>
+                ) : (
+                  <>🚀 Create Match</>
+                )}
+              </AnimatedButton>
             )}
+            
             {!momentsLoading && !flowAddress && (
-              <p className="text-orange-200 mt-4">
+              <p style={{ color: '#D1D5DB', marginTop: '1rem', opacity: 0.8 }}>
                 Flow address not available. Please refresh the page.
               </p>
             )}
             {!selectedNFT && flowAddress && !momentsLoading && (
-              <p className="text-orange-200 mt-4">
-                Select an NFT to stake
+              <p style={{ color: '#D1D5DB', marginTop: '1rem', opacity: 0.8 }}>
+                Select an NFT to stake in the arena
               </p>
             )}
           </div>
-        </div>
+        </Container>
       </div>
-    </div>
+    </>
   );
 } 

@@ -26,8 +26,9 @@ export async function GET(request: NextRequest) {
         grant_type: 'authorization_code',
         client_id: process.env.AUTH0_CLIENT_ID,
         client_secret: process.env.AUTH0_CLIENT_SECRET,
+        audience: process.env.AUTH0_AUDIENCE,
         code,
-                 redirect_uri: `${process.env.AUTH0_BASE_URL}/api/callback`,
+        redirect_uri: `${process.env.AUTH0_BASE_URL}/api/callback`,
       }),
     });
 

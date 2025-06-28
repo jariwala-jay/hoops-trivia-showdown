@@ -51,10 +51,18 @@ export interface Match {
   startedAt?: string;
   finishedAt?: string;
   currentQuestionIndex: number;
-  // NFT Transfer tracking
+  // NFT Transfer tracking (legacy - for backwards compatibility)
   nftTransferStatus?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
   nftTransferError?: string;
   nftTransferAttempts?: number;
+  
+  // Per-player NFT Transfer tracking (new approach)
+  nftTransferAStatus?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+  nftTransferAError?: string;
+  nftTransferAAttempts?: number;
+  nftTransferBStatus?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+  nftTransferBError?: string;
+  nftTransferBAttempts?: number;
 }
 
 export interface GameState {

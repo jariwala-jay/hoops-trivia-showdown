@@ -4,7 +4,7 @@ export async function GET() {
   const domain = process.env.AUTH0_ISSUER_BASE_URL;
   const clientId = process.env.AUTH0_CLIENT_ID;
   const redirectUri = `${process.env.AUTH0_BASE_URL}/api/callback`;
-  const scope = 'openid profile email';
+  const scope = `${process.env.AUTH0_SCOPE || 'openid profile email'} offline_access`;
   
   if (!domain || !clientId) {
     return NextResponse.json({ error: 'Auth0 configuration missing' }, { status: 500 });

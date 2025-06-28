@@ -26,6 +26,18 @@ export async function GET(request: NextRequest) {
       if (tokenResponse.ok && tokenResponse.status === 200) {
         accessTokenData = await tokenResponse.json();
       } else {
+        const errorData = await tokenResponse.json().catch(() => null);
+        console.log('[USER_TOKENS] Access token fetch failed:', tokenResponse.status, errorData);
+        
+        // Check if this is a token expiration error
+        if (errorData?.requiresLogin) {
+          return NextResponse.json({ 
+            error: 'Authentication expired',
+            requiresLogin: true,
+            message: 'Please log in again to view your NFTs'
+          }, { status: 401 });
+        }
+        
         return NextResponse.json({ error: 'Failed to fetch access token' }, { status: 401 });
       }
     } catch (error) {

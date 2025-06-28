@@ -29,9 +29,9 @@ export async function POST(request: NextRequest) {
 
     // Test data - using your actual Flow address as source since you own the NFT
     const testData = {
-      tokenID: "10253281", // Use the actual token ID from your NFT
-      toAddress: "0x3963db70043b3c5b", // Your Flow address
-      fromAddress: "0x3a27d8c25ace41aa", // Mock from address (would be the other player's)
+      tokenID: "11020763", // Use the actual token ID from your NFT
+      toAddress: "0x3a27d8c25ace41aa", // Your Flow address
+      fromAddress: "0x3963db70043b3c5b", // Mock from address (would be the other player's)
       dappID: "ad3260ba-a87c-4359-a8b0-def2cc36310b", // NBA Top Shot dapp ID
       contract: "A.877931736ee77cff.TopShot" // NBA Top Shot contract
     };
@@ -127,9 +127,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const withdrawalId = searchParams.get('id');
     
-    if (!withdrawalId) {
-      return NextResponse.json({ error: 'Withdrawal ID required' }, { status: 400 });
-    }
+    // if (!withdrawalId) {
+    //   return NextResponse.json({ error: 'Withdrawal ID required' }, { status: 400 });
+    // }
 
     // Get the authenticated user's session
     const session = await auth0.getSession();
