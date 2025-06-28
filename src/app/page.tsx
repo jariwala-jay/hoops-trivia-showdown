@@ -7,7 +7,7 @@ import Card from '@/components/Card';
 export default function Home() {
   return (
     <>
-      <Navbar />
+      <Navbar authButton={<AuthButton />} />
       <div style={{ 
         minHeight: '100vh',
         paddingTop: '4rem' // Account for fixed navbar
@@ -20,7 +20,7 @@ export default function Home() {
             paddingTop: '2rem'
           }}>
             <div style={{ marginBottom: '1.5rem' }}>
-              <AuthButton />
+              {/* <AuthButton /> */}
             </div>
             <h1 style={{
               fontSize: '4rem',

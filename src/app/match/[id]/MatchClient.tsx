@@ -8,6 +8,7 @@ import { useSound } from '@/hooks/useSound';
 import ShotClock from '@/components/ShotClock';
 import Navbar from '@/components/Navbar';
 import AnimatedButton from '@/components/AnimatedButton';
+import { truncateName } from '@/lib/utils';
 
 interface MatchClientProps {
   id: string;
@@ -19,6 +20,7 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
   const [myTransferStatus, setMyTransferStatus] = useState<string | null>(null);
   const [myTransferError, setMyTransferError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isLoser, setIsLoser] = useState(false);
 
   // Get current user ID
   useEffect(() => {
@@ -36,27 +38,29 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
     fetchCurrentUser();
   }, []);
 
-  // Set transfer status from match data based on current user
+  // Determine user's role (loser/winner) and set transfer status from match data
   useEffect(() => {
     if (match.winner !== 'TIE' && currentUserId) {
       const isPlayerA = match.playerA.id === currentUserId;
-      const isPlayerB = match.playerB?.id === currentUserId;
-      const userIsLoser = (isPlayerA && match.winner === 'B') || (isPlayerB && match.winner === 'A');
+      const userIsLoser = (isPlayerA && match.winner === 'B') || (!isPlayerA && match.winner === 'A');
+      setIsLoser(userIsLoser);
       
-      if (userIsLoser) {
-        const userPlayer = isPlayerA ? 'A' : 'B';
-        const statusKey = `nftTransfer${userPlayer}Status` as keyof typeof match;
-        const errorKey = `nftTransfer${userPlayer}Error` as keyof typeof match;
-        
-        setMyTransferStatus((match[statusKey] as string) || 'PENDING');
-        setMyTransferError((match[errorKey] as string) || null);
-      } else {
-        // User is winner - no transfer needed from them
-        setMyTransferStatus('NOT_REQUIRED');
-        setMyTransferError(null);
-      }
+      const playerLetter = isPlayerA ? 'A' : 'B';
+      const statusKey = `nftTransfer${playerLetter}Status` as keyof typeof match;
+      const errorKey = `nftTransfer${playerLetter}Error` as keyof typeof match;
+      
+      setMyTransferStatus((match[statusKey] as string) || 'PENDING');
+      setMyTransferError((match[errorKey] as string) || null);
     }
   }, [match, currentUserId]);
+
+  // Automatically trigger the transfer for the loser
+  useEffect(() => {
+    if (isLoser && myTransferStatus === 'PENDING' && !isTransferring) {
+      console.log('[AUTO-TRANSFER] User is the loser, automatically initiating transfer...');
+      handleTransferClick();
+    }
+  }, [isLoser, myTransferStatus, isTransferring]);
 
   // Periodically check for transfer completion when IN_PROGRESS
   useEffect(() => {
@@ -82,7 +86,7 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
     }
   };
 
-  const handleRetryTransfer = async () => {
+  const handleTransferClick = async () => {
     setIsTransferring(true);
     setMyTransferError(null);
 
@@ -98,7 +102,7 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
       const data = await response.json();
       
       if (response.ok) {
-        setMyTransferStatus('COMPLETED');
+        setMyTransferStatus('IN_PROGRESS'); // Set to in-progress, SSE will update to COMPLETED
         setMyTransferError(null);
       } else {
         setMyTransferError(data.error || 'Transfer failed');
@@ -115,302 +119,75 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
   const renderTransferStatus = () => {
     if (match.winner === 'TIE') {
       return (
-        <div style={{ marginBottom: '2rem' }}>
-          <div className="card" style={{
-            backgroundColor: 'rgba(59, 130, 246, 0.2)',
-            border: '1px solid rgba(59, 130, 246, 0.3)'
-          }}>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              gap: '0.5rem' 
-            }}>
-              <div style={{ color: '#60A5FA' }}>🤝</div>
-              <span style={{ color: '#BFDBFE' }}>No NFT transfers - each player keeps their NFT!</span>
-            </div>
-          </div>
+        <div className="card text-center p-4 bg-blue-500/20 border-blue-500/30">
+          <p className="text-blue-300">🤝 No NFT transfers - each player keeps their NFT!</p>
         </div>
       );
     }
 
-    switch (myTransferStatus) {
-      case 'COMPLETED':
-        return (
-          <div style={{ marginBottom: '2rem' }}>
-            <div className="card" style={{
-              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2))',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-              padding: '1.5rem'
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: '0.75rem',
-                  marginBottom: '0.75rem'
-                }}>
-                  <div style={{ color: '#10B981', fontSize: '1.5rem' }}>🎊</div>
-                  <span style={{ 
-                    color: '#A7F3D0', 
-                    fontSize: '1.125rem',
-                    fontWeight: 600
-                  }}>
-                    NFT Transfer Complete!
-                  </span>
-                </div>
-                <p style={{ 
-                  color: '#6EE7B7', 
-                  fontSize: '1rem',
-                  marginBottom: '0.5rem'
-                }}>
-                  Your NFT has been successfully transferred on the Flow blockchain.
-                </p>
-                <div style={{
-                  marginTop: '1rem',
-                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                  borderRadius: '0.5rem',
-                  padding: '0.75rem'
-                }}>
-                  <p style={{ 
-                    color: '#A7F3D0', 
-                    fontSize: '0.875rem'
-                  }}>
-                    🎉 <strong>Success!</strong> Check your Dapper wallet to see your new NFT collection!
-                  </p>
-                </div>
-              </div>
+    if (isLoser) {
+      // Logic for the LOSER
+      switch (myTransferStatus) {
+        case 'COMPLETED':
+          return <div className="card text-center p-4 bg-green-500/20 border-green-500/30"><p className="text-green-300">✅ Your NFT has been transferred successfully.</p></div>;
+        case 'IN_PROGRESS':
+          return <div className="card text-center p-4 bg-purple-500/20 border-purple-500/30"><p className="text-purple-300">⏳ Your NFT transfer is in progress...</p></div>;
+        case 'FAILED':
+          return (
+            <div className="card text-center p-4 bg-red-500/20 border-red-500/30">
+              <p className="text-red-300 mb-2">⚠️ Transfer failed: {myTransferError}</p>
+              <button onClick={handleTransferClick} disabled={isTransferring} className="btn btn-danger">
+                {isTransferring ? 'Retrying...' : 'Retry Transfer'}
+              </button>
             </div>
-          </div>
-        );
+          );
+        case 'PENDING':
+        default:
+          return (
+            <div className="card text-center p-4 bg-orange-500/20 border-orange-500/30">
+              <p className="text-orange-300 mb-2">You lost the match. You need to transfer your NFT to the winner.</p>
+              <button onClick={handleTransferClick} disabled={isTransferring} className="btn btn-primary">
+                {isTransferring ? 'Initiating...' : 'Transfer My NFT'}
+              </button>
+            </div>
+          );
+      }
+    } else {
+      // Logic for the WINNER
+      const opponentPlayer = match.playerA.id === currentUserId ? 'B' : 'A';
+      const opponentStatusKey = `nftTransfer${opponentPlayer}Status` as keyof typeof match;
+      const opponentStatus = match[opponentStatusKey] as string;
 
-      case 'IN_PROGRESS':
-        return (
-          <div style={{ marginBottom: '2rem' }}>
-            <div className="card" style={{
-              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(147, 51, 234, 0.2))',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
-              padding: '1.5rem'
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: '0.75rem',
-                  marginBottom: '0.75rem'
-                }}>
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
-                  <span style={{ 
-                    color: '#BFDBFE', 
-                    fontSize: '1.125rem',
-                    fontWeight: 600
-                  }}>
-                    🎉 NFT Transfer In Progress!
-                  </span>
-                </div>
-                <p style={{ 
-                  color: '#93C5FD', 
-                  fontSize: '1rem',
-                  marginBottom: '0.5rem'
-                }}>
-                  Your NFT is being transferred on the Flow blockchain. This typically takes a few minutes to complete.
-                </p>
-                <p style={{ 
-                  color: '#93C5FD', 
-                  fontSize: '0.875rem'
-                }}>
-                  ✅ You can safely leave this page - the transfer will continue in the background.
-                </p>
-                <div style={{
-                  marginTop: '1rem',
-                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                  borderRadius: '0.5rem',
-                  padding: '0.75rem'
-                }}>
-                  <p style={{ 
-                    color: '#BFDBFE', 
-                    fontSize: '0.875rem'
-                  }}>
-                    💡 <strong>Pro tip:</strong> Check your Dapper wallet in a few minutes to see your new NFT!
-                  </p>
-                </div>
-              </div>
+      switch (opponentStatus) {
+        case 'COMPLETED':
+          return <div className="card text-center p-4 bg-green-500/20 border-green-500/30"><p className="text-green-300">🎉 You won! The opponent&apos;s NFT has been transferred to you.</p></div>;
+        case 'IN_PROGRESS':
+          return <div className="card text-center p-4 bg-purple-500/20 border-purple-500/30"><p className="text-purple-300">⏳ Waiting for opponent to transfer their NFT...</p></div>;
+        case 'FAILED':
+          return <div className="card text-center p-4 bg-red-500/20 border-red-500/30"><p className="text-red-300">⚠️ Opponent&apos;s transfer failed. Please have them retry.</p></div>;
+        case 'PENDING':
+        default:
+          return (
+            <div className="card text-center p-4 bg-gray-600/20 border-gray-500/30">
+              <p className="text-gray-300">🏆 You won! Waiting for the opponent to initiate their NFT transfer.</p>
             </div>
-          </div>
-        );
-
-      case 'FAILED':
-        return (
-          <div style={{ marginBottom: '2rem' }}>
-            <div className="card" style={{
-              backgroundColor: 'rgba(239, 68, 68, 0.2)',
-              border: '1px solid rgba(239, 68, 68, 0.3)'
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: '0.5rem',
-                  marginBottom: '0.5rem'
-                }}>
-                  <div style={{ color: '#F87171' }}>⚠️</div>
-                  <span style={{ color: '#FECACA' }}>NFT transfer failed</span>
-                </div>
-                {myTransferError && (
-                  <p style={{ 
-                    color: '#FCA5A5', 
-                    fontSize: '0.875rem',
-                    marginBottom: '0.75rem'
-                  }}>
-                    {myTransferError}
-                  </p>
-                )}
-                <button
-                  onClick={handleRetryTransfer}
-                  disabled={isTransferring}
-                  className="btn"
-                  style={{
-                    backgroundColor: '#EF4444',
-                    color: '#F8F9FA',
-                    padding: '0.5rem 1rem',
-                    opacity: isTransferring ? 0.5 : 1
-                  }}
-                >
-                  {isTransferring ? 'Retrying...' : 'Retry Transfer'}
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'PENDING':
-      default:
-        return (
-          <div style={{ marginBottom: '2rem' }}>
-            <div className="card" style={{
-              backgroundColor: 'rgba(249, 115, 22, 0.2)',
-              border: '1px solid rgba(249, 115, 22, 0.3)'
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: '0.5rem',
-                  marginBottom: '0.5rem'
-                }}>
-                  <div style={{ color: '#FB923C' }}>⏳</div>
-                  <span style={{ color: '#FED7AA' }}>Preparing NFT transfer...</span>
-                </div>
-                <p style={{ 
-                  color: '#FDBA74', 
-                  fontSize: '0.875rem',
-                  marginBottom: '0.75rem'
-                }}>
-                  The system is setting up the NFT transfer. This should begin shortly.
-                </p>
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <button
-                    onClick={checkTransferStatus}
-                    className="btn"
-                    style={{
-                      backgroundColor: '#F97316',
-                      color: '#F8F9FA',
-                      padding: '0.5rem 1rem',
-                      fontSize: '0.875rem'
-                    }}
-                  >
-                    Refresh Status
-                  </button>
-                  <button
-                    onClick={handleRetryTransfer}
-                    disabled={isTransferring}
-                    className="btn"
-                    style={{
-                      backgroundColor: '#3B82F6',
-                      color: '#F8F9FA',
-                      padding: '0.5rem 1rem',
-                      fontSize: '0.875rem',
-                      opacity: isTransferring ? 0.5 : 1
-                    }}
-                  >
-                    {isTransferring ? 'Starting Transfer...' : 'Retry Transfer'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
+          );
+      }
     }
   };
 
-      return (
-      <div style={{ minHeight: '100vh' }}>
-        <Navbar />
-        <div style={{ 
-          maxWidth: '96rem', 
-          margin: '0 auto', 
-          padding: '2rem 1rem',
-          paddingTop: '6rem'
+  return (
+    <div className="p-4" style={{ paddingTop: '1rem', paddingBottom: '2rem' }}>
+      <div style={{ maxWidth: '60rem', margin: '0 auto' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: '2rem'
         }}>
-        {/* Victory Banner */}
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{
-            background: match.winner === 'TIE' 
-              ? 'linear-gradient(135deg, #00C176, #0B2545)' 
-              : winner 
-              ? 'linear-gradient(135deg, #FF6E00, #E63946)' 
-              : 'linear-gradient(135deg, #0B2545, #374151)',
-            borderRadius: '1rem',
-            padding: '3rem 2rem',
-            marginBottom: '2rem',
-            textAlign: 'center'
-          }}>
-            <div style={{
-              fontSize: '4rem',
-              marginBottom: '1rem'
-            }}>
-              {match.winner === 'TIE' ? '🤝' : '🏆'}
-            </div>
-            <h1 style={{
-              fontSize: '4rem',
-              fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
-              fontWeight: 800,
-              color: '#F8F9FA',
-              marginBottom: '1rem',
-              textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
-            }}>
-              {match.winner === 'TIE' ? 'Epic Tie Game!' : 'Game Over!'}
-            </h1>
-            
-            {winner && (
-              <div style={{ marginBottom: '1.5rem' }}>
-                <h2 style={{
-                  fontSize: '2.5rem',
-                  fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
-                  fontWeight: 700,
-                  color: '#F8F9FA',
-                  marginBottom: '0.5rem'
-                }}>
-                  🎉 {winner.name} Wins!
-                </h2>
-                <p style={{
-                  fontSize: '1.25rem',
-                  color: 'rgba(248, 249, 250, 0.8)'
-                }}>
-                  Congratulations! You win both NFTs!
-                </p>
-              </div>
-            )}
-          </div>
+          {renderTransferStatus()}
         </div>
 
-        {/* NFT Transfer Status */}
-        {renderTransferStatus()}
-        
         {/* Match Results */}
         <div style={{
           display: 'grid',
@@ -434,7 +211,7 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
                 fontWeight: 700,
                 color: '#F8F9FA'
               }}>
-                {match.playerA.name}
+                {truncateName(match.playerA.name)}
               </h3>
               {match.winner === 'A' && <div style={{ fontSize: '1.5rem' }}>👑</div>}
             </div>
@@ -518,7 +295,7 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
                 fontWeight: 700,
                 color: '#F8F9FA'
               }}>
-                {match.playerB?.name}
+                {truncateName(match.playerB?.name)}
               </h3>
               {match.winner === 'B' && <div style={{ fontSize: '1.5rem' }}>👑</div>}
             </div>
@@ -543,10 +320,12 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
                 overflow: 'hidden',
                 boxShadow: '0 10px 25px rgba(0,0,0,0.3)'
               }}>
-                <img
+                <Image
                   src={match.nftB!.image}
                   alt={match.nftB!.name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  style={{ objectFit: 'cover' }}
+                  width={100}
+                  height={100}
                 />
               </div>
               {match.winner === 'A' && (myTransferStatus === 'IN_PROGRESS' || myTransferStatus === 'COMPLETED') && (
@@ -701,7 +480,7 @@ function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | 
             onClick={() => {
               const tweetText = match.winner === 'TIE' 
                 ? `Just played an epic NBA trivia showdown that ended in a tie! 🤝 Final score: ${match.scoreA}-${match.scoreB} #HoopsTrivia #NBATopShot`
-                : `Just ${winner ? 'won' : 'played'} an epic NBA trivia showdown! 🏀 Final score: ${match.scoreA}-${match.scoreB} ${winner ? `Winner: ${winner.name} 🏆` : ''} #HoopsTrivia #NBATopShot`;
+                : `Just ${winner ? 'won' : 'played'} an epic NBA trivia showdown! 🏀 Final score: ${match.scoreA}-${match.scoreB} ${winner ? `Winner: ${truncateName(winner.name)} 🏆` : ''} #HoopsTrivia #NBATopShot`;
               const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
               window.open(tweetUrl, '_blank');
             }}
@@ -1253,7 +1032,7 @@ export default function MatchClient({ id }: MatchClientProps) {
                 color: '#F8F9FA',
                 marginBottom: '1rem'
               }}>
-                {match.playerA.name}
+                {truncateName(match.playerA.name)}
               </h2>
               <div style={{
                 width: '8rem',
@@ -1282,7 +1061,7 @@ export default function MatchClient({ id }: MatchClientProps) {
                   color: '#F8F9FA',
                   marginBottom: '1rem'
                 }}>
-                  {match.playerB.name}
+                  {truncateName(match.playerB.name)}
                 </h2>
                 <div style={{
                   width: '8rem',
@@ -1344,7 +1123,7 @@ export default function MatchClient({ id }: MatchClientProps) {
                 color: '#F8F9FA',
                 marginBottom: '0.5rem'
               }}>
-                {match.playerA.name}
+                {truncateName(match.playerA.name)}
               </h3>
               <div style={{
                 fontSize: '2rem',
@@ -1393,7 +1172,7 @@ export default function MatchClient({ id }: MatchClientProps) {
                 color: '#F8F9FA',
                 marginBottom: '0.5rem'
               }}>
-                {match.playerB?.name}
+                {truncateName(match.playerB?.name)}
               </h3>
               <div style={{
                 fontSize: '2rem',

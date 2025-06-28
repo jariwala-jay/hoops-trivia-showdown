@@ -5,7 +5,12 @@ export interface AuthError {
 }
 
 export function isAuthError(data: unknown): data is AuthError {
-  return data && typeof data === 'object' && data.requiresLogin === true;
+  return (
+    data !== null &&
+    typeof data === 'object' &&
+    'requiresLogin' in data &&
+    (data as AuthError).requiresLogin === true
+  );
 }
 
 export function handleAuthError(error: AuthError): void {
@@ -17,7 +22,7 @@ export function handleAuthError(error: AuthError): void {
     alert(error.message || 'Your session has expired. Please log in again.');
     
     // Redirect to login
-    window.location.href = '/api/login';
+    window.location.href = '/auth/login';
   }
 }
 

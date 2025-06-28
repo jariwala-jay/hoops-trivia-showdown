@@ -459,11 +459,15 @@ export async function createNFTTransferService(serverSideContext?: {
     if (serverSideContext?.cookies) {
       headers['Cookie'] = serverSideContext.cookies;
     }
+    
+    const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:4000';
 
     // Get access token
-    const tokenResponse = await fetch('/api/access-token', { headers });
+    const tokenResponse = await fetch(`${baseUrl}/api/access-token`, { headers });
     if (!tokenResponse.ok) {
-      throw new Error('Failed to get access token for NFT transfer');
+      const errorText = await tokenResponse.text();
+      console.error('Token response error:', errorText);
+      throw new Error(`Failed to get access token for NFT transfer: ${tokenResponse.status}`);
     }
     
     const tokenData = await tokenResponse.json();
@@ -473,9 +477,11 @@ export async function createNFTTransferService(serverSideContext?: {
     accessToken = tokenData.accessToken;
 
     // Get authenticated user info
-    const userResponse = await fetch('/api/auth/me', { headers });
+    const userResponse = await fetch(`${baseUrl}/api/auth/me`, { headers });
     if (!userResponse.ok) {
-      throw new Error('Failed to get authenticated user info for NFT transfer');
+      const errorText = await userResponse.text();
+      console.error('User info response error:', errorText);
+      throw new Error(`Failed to get authenticated user info for NFT transfer: ${userResponse.status}`);
     }
     
     const userData = await userResponse.json();

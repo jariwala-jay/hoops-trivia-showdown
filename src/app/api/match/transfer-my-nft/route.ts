@@ -81,7 +81,8 @@ export async function POST(request: NextRequest) {
 
     // Execute the transfers with the authenticated user's context
     const transferResult = await handleMatchFinishTransfers(match, {
-      authenticatedUserId: session.user.sub
+      authenticatedUserId: session.user.sub,
+      cookies: request.headers.get('cookie') || ''
     });
 
     // Update match with transfer results for this specific user

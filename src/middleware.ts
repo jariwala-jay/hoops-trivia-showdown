@@ -7,12 +7,12 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match both custom auth routes and standard Auth0 routes
-    '/api/login',
-    '/api/logout', 
-    '/api/callback',
-    '/api/access-token',
-    '/api/auth/:path*',  // Handle all /api/auth/* routes
-    '/auth/:path*',      // Handle all /auth/* routes (without /api/)
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico, sitemap.xml, robots.txt (metadata files)
+     */
+    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
   ],
 }; 

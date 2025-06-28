@@ -12,6 +12,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import { NFT, Match } from '@/types';
 import Image from 'next/image';
 import { useUserMoments } from '@/hooks/useUserMoments';
+import { truncateName } from '@/lib/utils';
 
 export default function JoinMatchPage() {
   const [matchId, setMatchId] = useState('');
@@ -257,7 +258,7 @@ export default function JoinMatchPage() {
                     }}>
                       Opponent
                     </h3>
-                    <p style={{ color: '#00C176' }}>{matchInfo.playerA.name}</p>
+                    <p style={{ color: '#00C176' }}>{truncateName(matchInfo.playerA.name)}</p>
                   </div>
                   <div>
                     <h3 style={{

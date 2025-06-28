@@ -14,13 +14,6 @@ export const auth0 = new Auth0Client({
     scope: `${process.env.AUTH0_SCOPE!} offline_access`, // Add offline_access for refresh tokens
     audience: process.env.AUTH0_AUDIENCE!,
   },
-  
-  // Keep existing custom routes that are working
-  routes: {
-    login: '/api/login',
-    logout: '/api/logout',
-    callback: '/api/callback',
-  },
 });
 
 // Simple config value getter that reads from environment variables

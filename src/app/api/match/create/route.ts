@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       id: matchId,
       status: 'PENDING',
       playerA: {
-        id: session.user.sub || uuidv4(),
+        id: session.user.sub,
         name: session.user.name || session.user.email || 'Player 1',
         avatar: session.user.picture,
         flowAddress: flowAddress
