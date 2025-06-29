@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '@/lib/db';
-import { getRandomQuestions } from '@/lib/questions';
 import { auth0 } from '@/lib/auth0';
 import { Match, NFT } from '@/types';
 
@@ -23,8 +22,8 @@ export async function POST(request: NextRequest) {
     console.log('Flow address type:', typeof flowAddress);
     console.log('Flow address length:', flowAddress?.length);
 
-    if (!nft || !nft.id) {
-      return NextResponse.json({ error: 'NFT data is required' }, { status: 400 });
+    if (!nft || !nft.id || !nft.name || !nft.image || !nft.rarity || !nft.collection) {
+      return NextResponse.json({ error: 'A complete NFT object is required to create a match.' }, { status: 400 });
     }
 
     if (!flowAddress) {
@@ -42,7 +41,7 @@ export async function POST(request: NextRequest) {
       name: nft.title || nft.name || `Token #${nft.id}`,
       image: nft.imageURL || nft.image || '/testImage.jpg',
       rarity: nft.rarity || 'Common',
-      collection: nft.dapp?.name || 'NBA Top Shot',
+      collection: nft.collection,
       // Add fields needed for NFT transfer
       contract: nft.contract || nft.tokenContractData?.contract || 'A.877931736ee77cff.TopShot',
       dappID: nft.dapp?.id || 'ad3260ba-a87c-4359-a8b0-def2cc36310b', // Fallback to NBA Top Shot dappID
@@ -51,8 +50,16 @@ export async function POST(request: NextRequest) {
 
     console.log('Converted NFT data for storage:', JSON.stringify(nftData, null, 2));
 
+    const questions = await db.getRandomQuestions(5, 'medium');
+    if (questions.length < 5) {
+      console.error('Not enough questions in the database to start a match.');
+      return NextResponse.json(
+        { error: 'Could not start match: not enough questions available.' }, 
+        { status: 500 }
+      );
+    }
+
     const matchId = uuidv4();
-    const questions = getRandomQuestions(5);
 
     const match: Match = {
       id: matchId,
@@ -64,7 +71,7 @@ export async function POST(request: NextRequest) {
         flowAddress: flowAddress
       },
       nftA: nftData,
-      questions,
+      questions: questions,
       answersA: [],
       answersB: [],
       scoreA: 0,

@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server';
 import { db, AutomatchEntry } from '@/lib/db';
 import { auth0 } from '@/lib/auth0';
 import { v4 as uuidv4 } from 'uuid';
-import { getRandomQuestions } from '@/lib/questions';
 import { Match, NFT } from '@/types';
 
 // Store active SSE connections
@@ -109,7 +108,22 @@ async function findMatchForUser(connectionId: string) {
     if (opponent) {
       // Found a match! Create the game
       const matchId = uuidv4();
-      const questions = getRandomQuestions(5);
+      const questions = await db.getRandomQuestions(5, 'medium');
+
+      if (questions.length < 5) {
+        console.error('Not enough questions in DB for SSE automatch. Returning opponent to queue.');
+        await db.addToAutomatchQueue(opponent);
+        
+        // Notify the current user of the error
+        controller.enqueue(`data: ${JSON.stringify({
+          type: 'error',
+          message: 'Could not start match: not enough questions available.'
+        })}\n\n`);
+
+        // We can't notify the opponent as we may not have their connection, 
+        // but they are back in the queue for the next person.
+        return;
+      }
 
       const match: Match = {
         id: matchId,
