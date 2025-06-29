@@ -6,6 +6,7 @@ import { MOCK_NFTS } from '@/lib/mockData';
 import { useUserMoments } from '@/hooks/useUserMoments';
 import { useUser } from '@auth0/nextjs-auth0';
 import Image from 'next/image';
+import RadiantBorder from './RadiantBorder';
 
 interface NFTSelectorProps {
   selectedNFT: NFT | null;
@@ -62,22 +63,7 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
     setCurrentPage(0);
   };
 
-  const getRarityColor = (rarity: string) => {
-    switch (rarity.toLowerCase()) {
-      case 'ultimate':
-        return 'border-red-400 bg-red-400/10';
-      case 'legendary':
-        return 'border-yellow-400 bg-yellow-400/10';
-      case 'rare':
-        return 'border-blue-400 bg-blue-400/10';
-      case 'fandom':
-        return 'border-teal-400 bg-teal-400/10';
-      case 'common':
-        return 'border-green-400 bg-green-400/10';
-      default:
-        return 'border-gray-400 bg-gray-400/10';
-    }
-  };
+
 
   // Show loading state
   if (isLoading) {
@@ -156,71 +142,77 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
         {paginatedNFTs.map((nft) => {
           const isWithdrawInProgress = nft.isWithdrawInProgress;
           const isDisabled = isWithdrawInProgress;
+          const isSelected = selectedNFT?.id === nft.id;
           
           return (
-            <div
+            <RadiantBorder
               key={nft.id}
-              onClick={() => !isDisabled && onSelect(nft)}
-              className={`relative group rounded-xl overflow-hidden transition-all duration-300 ${
+              isSelected={isSelected}
+              className={`transition-all duration-300 ${
                 isDisabled 
                   ? 'opacity-50 cursor-not-allowed'
-                  : selectedNFT?.id === nft.id
-                    ? 'ring-4 ring-orange-400 scale-105 cursor-pointer'
+                  : isSelected
+                    ? 'scale-105 cursor-pointer'
                     : 'hover:scale-105 cursor-pointer'
-              } ${getRarityColor(nft.rarity || 'common')}`}
+              }`}
             >
-            {/* NFT Image */}
-            <div className="aspect-[3/4] relative">
-              <Image
-                src={nft.image}
-                alt={nft.name}
-                className="w-full h-full object-cover"
-                width={100}
-                height={100}
-              />
-              
-              {/* Selection Overlay */}
-              {selectedNFT?.id === nft.id && (
-                <div className="absolute inset-0 bg-orange-500/20 flex items-center justify-center">
-                  <div className="text-white text-2xl">✓</div>
+              <div
+                onClick={() => !isDisabled && onSelect(nft)}
+                className="relative group rounded-xl overflow-hidden h-full"
+              >
+                {/* NFT Image */}
+                <div className="aspect-[3/4] relative">
+                  <Image
+                    src={nft.image}
+                    alt={nft.name}
+                    className="w-full h-full object-cover"
+                    width={100}
+                    height={100}
+                  />
+                  
+                  {/* Selection Overlay */}
+                  {isSelected && (
+                    <div className="absolute inset-0 bg-orange-500/20 flex items-center justify-center">
+                      <div className="text-white text-2xl">✓</div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* NFT Info */}
-            <div className="p-4 bg-black/50 backdrop-blur-sm">
-              <h3 className="font-bold text-white text-sm truncate">{nft.name}</h3>
-              <div className="mt-2">
-                <p className="text-xs text-gray-300 truncate mb-2">
-                  {nft.description || nft.collection}
-                </p>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-400">#{nft.serialNumber || 'N/A'}</span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    nft.rarity?.toLowerCase() === 'ultimate' ? 'bg-red-400/20 text-red-400' :
-                    nft.rarity?.toLowerCase() === 'legendary' ? 'bg-yellow-400/20 text-yellow-400' :
-                    nft.rarity?.toLowerCase() === 'rare' ? 'bg-blue-400/20 text-blue-400' :
-                    nft.rarity?.toLowerCase() === 'fandom' ? 'bg-teal-400/20 text-teal-400' :
-                    nft.rarity?.toLowerCase() === 'common' ? 'bg-green-400/20 text-green-400' :
-                    'bg-gray-400/20 text-gray-400'
-                  }`}>
-                    {nft.rarity}
-                  </span>
+                {/* NFT Info */}
+                <div className="p-4 bg-black/50 backdrop-blur-sm">
+                  <h3 className="font-bold text-white text-sm truncate">{nft.name}</h3>
+                  <div className="mt-2">
+                    <p className="text-xs text-gray-300 truncate mb-2">
+                      {nft.description || nft.collection}
+                    </p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-400">#{nft.serialNumber || 'N/A'}</span>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        nft.rarity?.toLowerCase() === 'ultimate' ? 'bg-red-400/20 text-red-400' :
+                        nft.rarity?.toLowerCase() === 'legendary' ? 'bg-yellow-400/20 text-yellow-400' :
+                        nft.rarity?.toLowerCase() === 'rare' ? 'bg-blue-400/20 text-blue-400' :
+                        nft.rarity?.toLowerCase() === 'fandom' ? 'bg-teal-400/20 text-teal-400' :
+                        nft.rarity?.toLowerCase() === 'common' ? 'bg-green-400/20 text-green-400' :
+                        'bg-gray-400/20 text-gray-400'
+                      }`}>
+                        {nft.rarity}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Withdrawal Status Overlay */}
-            {isWithdrawInProgress && (
-              <div className="absolute inset-0 bg-red-500/80 flex items-center justify-center">
-                <div className="text-white text-center">
-                  <div className="text-2xl mb-1">🔄</div>
-                  <div className="text-xs font-medium">TRANSFERRING</div>
-                </div>
+                {/* Withdrawal Status Overlay */}
+                {isWithdrawInProgress && (
+                  <div className="absolute inset-0 bg-red-500/80 flex items-center justify-center">
+                    <div className="text-white text-center">
+                      <div className="text-2xl mb-1">🔄</div>
+                      <div className="text-xs font-medium">TRANSFERRING</div>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        );
+            </RadiantBorder>
+          );
         })}
       </div>
 
