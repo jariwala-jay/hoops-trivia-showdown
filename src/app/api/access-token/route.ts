@@ -11,7 +11,6 @@ export async function GET(): Promise<NextResponse> {
     // Check if user is authenticated first
     const session = await auth0.getSession();
     if (!session) {
-      console.log('[ACCESS_TOKEN] No session found, user not authenticated');
       return NextResponse.json({ 
         error: 'Not authenticated',
         requiresLogin: true 
@@ -22,7 +21,6 @@ export async function GET(): Promise<NextResponse> {
     const { token: accessToken } = await auth0.getAccessToken();
     
     if (!accessToken) {
-      console.log('[ACCESS_TOKEN] No access token available');
       return NextResponse.json({ 
         error: 'No access token available',
         requiresLogin: true 
@@ -44,7 +42,6 @@ export async function GET(): Promise<NextResponse> {
                          (error as { code: string }).code === 'missing_refresh_token');
     
     if (isTokenError) {
-      console.log('[ACCESS_TOKEN] Token expired, user needs to re-authenticate');
       return NextResponse.json({ 
         error: 'Access token expired',
         requiresLogin: true,

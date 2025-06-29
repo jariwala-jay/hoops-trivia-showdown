@@ -52,8 +52,7 @@ export function useMatchState(id: string, { onMatchFinished }: { onMatchFinished
     }
   }, [id]);
 
-  const connectSSE = useCallback(() => {
-    console.log(`[MATCH SSE] Connecting to match ${id} (attempt ${reconnectAttemptsRef.current + 1})`);
+  const connectSSE = useCallback(() => {  
     setConnectionStatus('connecting');
 
     if (eventSourceRef.current) {
@@ -64,7 +63,6 @@ export function useMatchState(id: string, { onMatchFinished }: { onMatchFinished
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
-      console.log('[MATCH SSE] Connection opened');
       setConnectionStatus('connected');
       setError(null);
       reconnectAttemptsRef.current = 0;
@@ -73,7 +71,6 @@ export function useMatchState(id: string, { onMatchFinished }: { onMatchFinished
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('[MATCH SSE] Received:', data.type);
 
         switch (data.type) {
           case 'match_state':
@@ -86,7 +83,6 @@ export function useMatchState(id: string, { onMatchFinished }: { onMatchFinished
           case 'match_finished':
             setMatchData(data.match);
             setFinishedMatchData(data.match);
-            console.log('[MATCH SSE] Match finished, data persisted');
             onMatchFinished();
             break;
           case 'match_deleted':
@@ -95,7 +91,6 @@ export function useMatchState(id: string, { onMatchFinished }: { onMatchFinished
             }
             break;
           case 'connected':
-            console.log('[MATCH SSE] Connected to match updates');
             break;
           case 'error':
             setError(data.message || 'Connection error');
@@ -107,7 +102,6 @@ export function useMatchState(id: string, { onMatchFinished }: { onMatchFinished
     };
 
     eventSource.onerror = () => {
-      console.log('[MATCH SSE] Connection closed or error');
       setConnectionStatus('disconnected');
       
       if (eventSourceRef.current) {
@@ -117,11 +111,9 @@ export function useMatchState(id: string, { onMatchFinished }: { onMatchFinished
 
       if (reconnectAttemptsRef.current < maxReconnectAttempts) {
         reconnectAttemptsRef.current += 1;
-        console.log(`[MATCH SSE] Will attempt to reconnect in ${2 * reconnectAttemptsRef.current}s`);
         reconnectTimeoutRef.current = setTimeout(connectSSE, 2000 * reconnectAttemptsRef.current);
       } else {
         setError('Connection lost. Please refresh the page.');
-        console.log('[MATCH SSE] Max reconnect attempts reached');
       }
     };
   }, [id, onMatchFinished]);
@@ -130,7 +122,6 @@ export function useMatchState(id: string, { onMatchFinished }: { onMatchFinished
     if (!id || hasInitializedRef.current) return;
 
     const initializeMatch = async () => {
-      console.log(`[MATCH] Initializing match ${id}`);
       hasInitializedRef.current = true;
       
       const initialMatch = await fetchMatchData();

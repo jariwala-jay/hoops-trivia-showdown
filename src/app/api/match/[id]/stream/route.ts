@@ -31,8 +31,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const userId = session.user.sub || session.user.email || 'unknown';
     const userName = session.user.name || session.user.email || 'Player';
 
-    console.log(`[MATCH SSE] User ${userId} (${userName}) connected to match ${matchId}`);
-
     // Get initial match state
     const match = await db.getMatch(matchId);
     if (!match) {
@@ -77,7 +75,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
         // Cleanup on disconnect
         request.signal.addEventListener('abort', () => {
-          console.log(`[MATCH SSE] User ${userId} disconnected from match ${matchId}`);
           cleanupConnection(connectionKey);
         });
       }
@@ -202,7 +199,6 @@ function startMatchMonitoring(connectionKey: string) {
         if (success) {
           // Keep connection alive for 2 minutes after match finishes to allow results viewing
           setTimeout(() => {
-            console.log(`[MATCH SSE] Closing connection for finished match ${matchId} after 2 minutes`);
             cleanupConnection(connectionKey);
           }, 2 * 60 * 1000); // 2 minutes to view results
         }

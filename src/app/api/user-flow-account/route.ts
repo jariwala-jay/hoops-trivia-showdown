@@ -24,9 +24,6 @@ export async function GET(request: NextRequest) {
     if (!tokenData.accessToken) {
       return NextResponse.json({ error: 'No access token available' }, { status: 401 });
     }
-
-    // Make GraphQL call to get account info which includes flowAccountID
-    console.log('Getting account info for user:', session.user.sub);
     
     const flowResponse = await fetch('https://staging.accounts.meetdapper.com/graphql', {
       method: 'POST',
@@ -67,12 +64,9 @@ export async function GET(request: NextRequest) {
     const flowAddress = account?.flowAccountID;
     
     if (!flowAddress) {
-      console.log('No flowAccountID found in account:', account);
       return NextResponse.json({ error: 'No Flow account found' }, { status: 404 });
     }
 
-    console.log('Successfully retrieved Flow address:', flowAddress);
-    
     return NextResponse.json({ 
       address: flowAddress,
       userId: session.user.sub,

@@ -48,9 +48,7 @@ export function LogoIntro({ onComplete, playSound = false }: LogoIntroProps) {
   }, []);
 
   useEffect(() => {
-    // Prevent multiple executions
     if (hasStartedRef.current || hasCompletedRef.current || !isMounted) {
-      console.log('LogoIntro: Already started, completed, or not mounted, skipping');
       return;
     }
 
@@ -58,17 +56,13 @@ export function LogoIntro({ onComplete, playSound = false }: LogoIntroProps) {
 
     async function sequence() {
       try {
-        console.log('LogoIntro sequence starting, playSound:', playSound);
-        
         // Small delay to ensure audio context is ready
         await new Promise(r => setTimeout(r, 100));
         
         // Play sound if enabled
         if (playSound) {
-          console.log('Attempting to play intro swish sound');
           try {
             await playSwish();
-            console.log('Intro swish sound played successfully');
           } catch (error) {
             console.warn('Could not play intro sound:', error);
           }
@@ -101,7 +95,6 @@ export function LogoIntro({ onComplete, playSound = false }: LogoIntroProps) {
         if (!hasCompletedRef.current && isMounted) {
           hasCompletedRef.current = true;
           onCompleteRef.current();
-          console.log('LogoIntro sequence completed');
         }
       } catch (error) {
         console.error('LogoIntro animation error:', error);
@@ -121,7 +114,7 @@ export function LogoIntro({ onComplete, playSound = false }: LogoIntroProps) {
     }, 50);
     
     return () => clearTimeout(timeoutId);
-  }, [isMounted, controls, playSound, playSwish]); // Add controls to dependencies
+  }, [isMounted, controls, playSound, playSwish]);
 
   return (
     <div

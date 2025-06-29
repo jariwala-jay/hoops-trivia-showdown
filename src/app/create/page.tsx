@@ -22,16 +22,11 @@ export default function CreateMatchPage() {
   const router = useRouter();
   const { flowAddress, isLoading: momentsLoading } = useUserMoments();
 
-  console.log('Create page - Flow address:', flowAddress);
-  console.log('Create page - Moments loading:', momentsLoading);
-
   const handleCreateMatch = async () => {
     if (!selectedNFT) {
       toast.error('Please select an NFT to stake');
       return;
     }
-
-    console.log('Attempting to create match with Flow address:', flowAddress);
 
     if (!flowAddress) {
       toast.error('Flow address not available. Please try again.');
@@ -46,11 +41,6 @@ export default function CreateMatchPage() {
         nft: selectedNFT,
         flowAddress: flowAddress,
       };
-      
-      console.log('=== CREATE MATCH REQUEST DEBUG ===');
-      console.log('Request body being sent:', JSON.stringify(requestBody, null, 2));
-      console.log('Flow address being sent:', flowAddress);
-      console.log('Flow address type:', typeof flowAddress);
       
       const response = await fetch('/api/match/create', {
         method: 'POST',

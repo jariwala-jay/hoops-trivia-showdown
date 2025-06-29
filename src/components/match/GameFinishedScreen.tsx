@@ -27,9 +27,8 @@ export function GameFinishedScreen({
     try {
       const response = await fetch(`/api/match/transfer-my-nft?matchId=${match.id}`);
       if (response.ok) {
-        const data = await response.json();
-        // This will be updated via SSE, but we can show immediate feedback
-        console.log('My transfer status check:', data);
+        await response.json();
+        // Transfer status will be updated via SSE
       }
     } catch (error) {
       console.error('Error checking transfer status:', error);
@@ -85,7 +84,6 @@ export function GameFinishedScreen({
   // Automatically trigger the transfer for the loser
   useEffect(() => {
     if (isLoser && myTransferStatus === 'PENDING' && !isTransferring) {
-      console.log('[AUTO-TRANSFER] User is the loser, automatically initiating transfer...');
       handleTransferClick();
     }
   }, [isLoser, myTransferStatus, isTransferring, handleTransferClick]);

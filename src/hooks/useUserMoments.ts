@@ -48,7 +48,6 @@ export function useUserMoments(): UseUserMomentsReturn {
       // Handle NFTs
       if (tokensResponse.ok) {
         const tokensData = await tokensResponse.json();
-        console.log('Tokens response:', tokensData);
         
         // Handle both direct tokens array and GraphQL response format
         const tokens = tokensData.tokens || tokensData.data?.getTokens?.tokens || [];
@@ -78,7 +77,6 @@ export function useUserMoments(): UseUserMomentsReturn {
           }));
         
         setMoments(nfts);
-        console.log('Processed NFTs:', nfts);
       } else {
         console.error('Failed to fetch tokens:', tokensResponse.status);
         setMoments([]);
@@ -87,9 +85,7 @@ export function useUserMoments(): UseUserMomentsReturn {
       // Handle Flow address
       if (flowResponse.ok) {
         const flowData = await flowResponse.json();
-        console.log('Flow address API response:', flowData);
         setFlowAddress(flowData.address || null);
-        console.log('User Flow address set to:', flowData.address);
       } else {
         const errorText = await flowResponse.text();
         console.error('Failed to fetch Flow address:', flowResponse.status, errorText);

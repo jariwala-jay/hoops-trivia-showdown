@@ -27,9 +27,6 @@ export async function GET(request: NextRequest) {
     const rarity = searchParams.get('rarity');
     const flowAddress = searchParams.get('flowAddress');
 
-    console.log('=== SSE AUTOMATCH DEBUG ===');
-    console.log('Received Flow address in SSE:', flowAddress);
-
     if (!nftData || !rarity) {
       return new Response('NFT data and rarity are required', { status: 400 });
     }
@@ -42,8 +39,6 @@ export async function GET(request: NextRequest) {
     const userId = session.user.sub || session.user.email || 'unknown';
     const userName = session.user.name || session.user.email || 'Player';
     const userAvatar = session.user.picture;
-
-    console.log(`[SSE] User ${userId} (${userName}) connected for ${rarity} automatch`);
 
     // Create SSE stream
     const stream = new ReadableStream({
@@ -71,7 +66,6 @@ export async function GET(request: NextRequest) {
 
         // Cleanup on disconnect
         request.signal.addEventListener('abort', () => {
-          console.log(`[SSE] User ${userId} disconnected`);
           activeConnections.delete(connectionId);
           // Remove from queue when disconnecting
           db.removeFromAutomatchQueue(userId, rarity);
@@ -111,7 +105,6 @@ async function findMatchForUser(connectionId: string) {
       const questions = await db.getRandomQuestions(5, 'medium');
 
       if (questions.length < 5) {
-        console.error('Not enough questions in DB for SSE automatch. Returning opponent to queue.');
         await db.addToAutomatchQueue(opponent);
         
         // Notify the current user of the error
@@ -158,8 +151,6 @@ async function findMatchForUser(connectionId: string) {
       };
 
       await db.createMatch(match);
-
-      console.log(`[SSE] Match created: ${matchId} between ${userName} and ${opponent.userName}`);
 
       // Notify both players
       controller.enqueue(`data: ${JSON.stringify({
@@ -217,8 +208,6 @@ async function findMatchForUser(connectionId: string) {
       await db.addToAutomatchQueue(queueEntry);
       const queueSize = await db.getAutomatchQueueSize(rarity);
 
-      console.log(`[SSE] User ${userId} added to queue. Queue size: ${queueSize}`);
-
       // Send queue status
       controller.enqueue(`data: ${JSON.stringify({
         type: 'queued',
@@ -263,7 +252,7 @@ function scheduleMatchCheck(connectionId: string) {
         })}\n\n`);
       }
     } catch (error) {
-      console.error('Error in scheduled match check:', error);
+      console.error('Error in scheduled match check:', error);  
       clearInterval(interval);
     }
   }, 3000);

@@ -27,9 +27,6 @@ function JoinMatchContent() {
   const { flowAddress, isLoading: momentsLoading } = useUserMoments();
   const searchParams = useSearchParams();
 
-  console.log('Join page - Flow address:', flowAddress);
-  console.log('Join page - Moments loading:', momentsLoading);
-
   // Extract match ID from URL parameters on component mount
   useEffect(() => {
     const idFromUrl = searchParams.get('id');
@@ -90,8 +87,6 @@ function JoinMatchContent() {
   const handleJoinMatch = async () => {
     if (!matchId.trim() || !selectedNFT) return;
 
-    console.log('Attempting to join match with Flow address:', flowAddress);
-
     if (!flowAddress) {
       setError('Flow address not available. Please try again.');
       return;
@@ -106,11 +101,6 @@ function JoinMatchContent() {
         nft: selectedNFT,
         flowAddress: flowAddress,
       };
-      
-      console.log('=== JOIN MATCH REQUEST DEBUG ===');
-      console.log('Request body being sent:', JSON.stringify(requestBody, null, 2));
-      console.log('Flow address being sent:', flowAddress);
-      console.log('Flow address type:', typeof flowAddress);
       
       const response = await fetch('/api/match/join', {
         method: 'POST',

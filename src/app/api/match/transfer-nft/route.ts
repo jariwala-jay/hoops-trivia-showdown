@@ -61,10 +61,7 @@ export async function POST(request: NextRequest) {
       nftTransferStatus: 'IN_PROGRESS',
       nftTransferAttempts: (match.nftTransferAttempts || 0) + 1
     });
-
-    console.log(`Starting NFT transfer for match ${matchId}`);
-    console.log(`Authenticated user: ${session.user.sub}`);
-
+    
     // Execute the transfers with authenticated user context
     const transferResult = await handleMatchFinishTransfers(match, {
       authenticatedUserId: session.user.sub

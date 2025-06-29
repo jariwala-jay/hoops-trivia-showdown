@@ -50,8 +50,6 @@ export function useGameLogic({
     setHasAnswered(true);
 
     try {
-      console.log('[ANSWER] Submitting answer:', { answerIndex, timeRemaining, playerId: currentUserId });
-      
       const response = await fetch('/api/match/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -83,17 +81,13 @@ export function useGameLogic({
     let intervalId: NodeJS.Timeout | null = null;
 
     if (timerState.isRunning && timerState.startTime) {
-      console.log('[TIMER] Starting independent timer for question:', timerState.questionId);
-      
       intervalId = setInterval(() => {
         const elapsed = Date.now() - timerState.startTime!;
         const remaining = Math.max(0, 24 - Math.floor(elapsed / 1000));
         
         setTimeLeft(remaining);
-        console.log('[TIMER] Time left:', remaining);
         
         if (remaining <= 0) {
-          console.log('[TIMER] Time up!');
           setTimerState(prev => ({ ...prev, isRunning: false }));
           onTimeUpRef.current();
           submitAnswerRef.current?.(-1, 0);
@@ -103,7 +97,6 @@ export function useGameLogic({
 
     return () => {
       if (intervalId) {
-        console.log('[TIMER] Cleaning up independent timer');
         clearInterval(intervalId);
       }
     };
@@ -116,7 +109,6 @@ export function useGameLogic({
         !hasAnswered && 
         currentQuestion.id !== timerState.questionId) {
       
-      console.log('[TIMER] New question detected, starting timer:', currentQuestion.id);
       setTimeLeft(24);
       setTimerState({
         isRunning: true,
@@ -124,12 +116,12 @@ export function useGameLogic({
         startTime: Date.now(),
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match?.status, currentQuestion?.id, hasAnswered, timerState.questionId]);
 
   // Stop timer when answered
   useEffect(() => {
     if (hasAnswered && timerState.isRunning) {
-      console.log('[TIMER] Stopping timer - answered');
       setTimerState(prev => ({ ...prev, isRunning: false }));
     }
   }, [hasAnswered, timerState.isRunning]);
@@ -137,7 +129,6 @@ export function useGameLogic({
   // Reset answer state when question changes
   useEffect(() => {
     if (match?.currentQuestionIndex !== undefined) {
-      console.log(`[QUESTION] Question changed to index ${match.currentQuestionIndex}`);
       setSelectedAnswer(null);
       setHasAnswered(false);
       setShowFeedback(false);

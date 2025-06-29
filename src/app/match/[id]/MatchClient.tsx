@@ -54,10 +54,8 @@ export default function MatchClient({ id }: MatchClientProps) {
         await audio.play();
         audioInitializedRef.current = true;
         setSoundsEnabled(true);
-        console.log('Audio context initialized successfully');
       } catch (error) {
         console.warn('Could not initialize audio context:', error);
-        // Still set sounds as enabled, they might work anyway
         setSoundsEnabled(true);
       }
     }
@@ -72,28 +70,18 @@ export default function MatchClient({ id }: MatchClientProps) {
     maxReconnectAttempts,
   } = useMatchState(id, {
     onMatchFinished: () => {
-      console.log('Match finished callback triggered');
-      // We'll handle cheer sound in useEffect instead
+      // Match finished callback - cheer sound handled in useEffect
     },
   });
 
   // Handle cheer sound when match finishes
   useEffect(() => {
     if (match?.status === 'FINISHED' && soundsEnabled && currentUserId && !cheerPlayedRef.current) {
-      console.log('Match finished, checking winner...', { 
-        winner: match.winner, 
-        currentUserId,
-        playerA: match.playerA.id,
-        playerB: match.playerB?.id 
-      });
       const isPlayerA = match.playerA.id === currentUserId;
       const isWinner = (isPlayerA && match.winner === 'A') || (!isPlayerA && match.winner === 'B');
-      console.log('Is winner:', isWinner);
       
       if (isWinner) {
-        console.log('Playing cheer sound for winner');
-        cheerPlayedRef.current = true; // Mark as played
-        // Add a small delay to ensure the game finished screen is rendered
+        cheerPlayedRef.current = true;
         setTimeout(() => {
           cheerSound.play().catch(err => console.warn('Cheer sound failed:', err));
         }, 500);
@@ -124,25 +112,18 @@ export default function MatchClient({ id }: MatchClientProps) {
     currentUserId: userId,
     id,
     onTimeUp: () => {
-      console.log('onTimeUp called - soundsEnabled:', soundsEnabled);
-      if (soundsEnabled) {
-        console.log('Playing buzzer sound');
-        buzzerSound.play().catch(err => console.warn('Buzzer sound failed:', err));
-      } else {
-        console.log('Sounds not enabled, attempting to play buzzer anyway');
-        buzzerSound.play().catch(err => console.warn('Buzzer sound failed (sounds disabled):', err));
-      }
+      // Always play buzzer when time runs out - it's a critical game event
+      buzzerSound.play().catch(err => console.warn('Buzzer sound failed:', err));
     },
     onAnswerSelect: () => {
       if (soundsEnabled) {
-        console.log('Playing swish sound');
         swishSound.play().catch(err => console.warn('Swish sound failed:', err));
       }
     },
   });
 
   const startGame = async () => {
-    await initializeAudio(); // Initialize audio when user starts game
+    await initializeAudio();
     try {
       const response = await fetch('/api/match/start', {
         method: 'POST',
@@ -157,21 +138,18 @@ export default function MatchClient({ id }: MatchClientProps) {
       }
       
       await response.json();
-      // Match updates will come via SSE
     } catch (err) {
       console.error('Error starting game:', err);
     }
   };
 
   const handleAnswerClick = (answerIndex: number) => {
-    initializeAudio(); // Ensure audio is initialized when user answers
+    initializeAudio();
     handleAnswerSelect(answerIndex);
   };
 
   const handleIntroComplete = () => {
-    console.log('Intro completed');
     setIntroShown(true);
-    // The server will automatically transition to IN_PROGRESS after the intro timeout
   };
 
   if (error && !match) {
