@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Navbar from '@/components/Navbar';
 
 interface TestResult {
   success?: boolean;
@@ -80,16 +81,40 @@ export default function TestNFTPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        <h1 className="text-3xl font-bold text-center mb-8">NFT Withdrawal Test</h1>
+    <div style={{ minHeight: '100vh' }}>
+      <Navbar />
+      <div style={{ 
+        maxWidth: '64rem', 
+        margin: '0 auto', 
+        padding: '2rem 1rem',
+        paddingTop: '6rem'
+      }}>
+        <h1 style={{
+          fontSize: '2rem',
+          fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+          fontWeight: 700,
+          textAlign: 'center',
+          marginBottom: '2rem',
+          color: '#F8F9FA'
+        }}>
+          🏀 NFT Withdrawal Test
+        </h1>
         
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex gap-4 mb-4">
+        <div className="card" style={{ marginBottom: '1.5rem' }}>
+          <div style={{
+            display: 'flex',
+            gap: '1rem',
+            marginBottom: '1rem',
+            flexWrap: 'wrap'
+          }}>
             <button
               onClick={testWithdrawal}
               disabled={loading}
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+              className="btn btn-primary"
+              style={{
+                opacity: loading ? 0.5 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}
             >
               {loading ? 'Testing...' : 'Test NFT Withdrawal'}
             </button>
@@ -97,7 +122,13 @@ export default function TestNFTPage() {
             <button
               onClick={checkMyNFTs}
               disabled={loading}
-              className="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+              className="btn"
+              style={{
+                backgroundColor: '#8B5CF6',
+                color: '#F8F9FA',
+                opacity: loading ? 0.5 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}
             >
               {loading ? 'Loading...' : 'Check My NFTs'}
             </button>
@@ -106,7 +137,13 @@ export default function TestNFTPage() {
               <button
                 onClick={checkStatus}
                 disabled={loading}
-                className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+                className="btn"
+                style={{
+                  backgroundColor: '#10B981',
+                  color: '#F8F9FA',
+                  opacity: loading ? 0.5 : 1,
+                  cursor: loading ? 'not-allowed' : 'pointer'
+                }}
               >
                 {loading ? 'Checking...' : 'Check Status'}
               </button>
@@ -114,18 +151,38 @@ export default function TestNFTPage() {
           </div>
 
           {withdrawalId && (
-            <div className="mb-4 p-3 bg-gray-100 rounded">
-              <strong>Withdrawal ID:</strong> {withdrawalId}
+            <div style={{
+              marginBottom: '1rem',
+              padding: '0.75rem',
+              backgroundColor: 'rgba(75, 85, 99, 0.3)',
+              borderRadius: '0.5rem'
+            }}>
+              <strong style={{ color: '#F8F9FA' }}>Withdrawal ID:</strong>{' '}
+              <span style={{ color: '#D1D5DB' }}>{withdrawalId}</span>
             </div>
           )}
         </div>
 
         {result && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">
+          <div className="card">
+            <h2 style={{
+              fontSize: '1.25rem',
+              fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+              fontWeight: 600,
+              marginBottom: '1rem',
+              color: '#F8F9FA'
+            }}>
               {result.success ? '✅ Result' : '❌ Error'}
             </h2>
-            <pre className="bg-gray-900 text-green-400 p-4 rounded overflow-x-auto text-sm">
+            <pre style={{
+              backgroundColor: '#1F2937',
+              color: '#10B981',
+              padding: '1rem',
+              borderRadius: '0.5rem',
+              overflow: 'auto',
+              fontSize: '0.875rem',
+              fontFamily: 'monospace'
+            }}>
               {JSON.stringify(result, null, 2)}
             </pre>
           </div>

@@ -5,6 +5,7 @@ import { GET_MY_FLOW_ACCOUNT, GET_FLOW_ACCOUNT } from './graphql/queries';
 interface TransferContext {
   accessToken: string;
   graphqlEndpoint: string;
+  authenticatedUserId: string; // Add user ID to know who is authenticated
 }
 
 interface PlayerWithFlowAddress extends Player {
@@ -55,13 +56,16 @@ export class NFTTransferService {
   private client: GraphQLClient;
   private maxRetries: number = 3;
   private retryDelay: number = 2000; // 2 seconds
+  private authenticatedUserId: string; // Track who is authenticated
 
   constructor(context: TransferContext) {
     this.client = new GraphQLClient(context.graphqlEndpoint, context.accessToken);
+    this.authenticatedUserId = context.authenticatedUserId;
   }
 
   /**
    * Main entry point for handling post-match NFT transfers
+   * IMPORTANT: This now only handles transfers FROM the authenticated user
    */
   async handleMatchFinishTransfer(match: Match): Promise<{
     success: boolean;
@@ -70,6 +74,7 @@ export class NFTTransferService {
   }> {
     try {
       console.log(`Starting NFT transfer process for match ${match.id}, winner: ${match.winner}`);
+      console.log(`Authenticated user: ${this.authenticatedUserId}`);
       
       // Determine what transfers need to happen
       const transferPlan = this.createTransferPlan(match);
@@ -80,15 +85,38 @@ export class NFTTransferService {
         return { success: true, operations: [] };
       }
 
+      // CRITICAL: Filter transfers to only those FROM the authenticated user
+      const authenticatedUserTransfers = transferPlan.filter(plan => {
+        const fromPlayerId = plan.fromPlayer === 'A' ? match.playerA.id : match.playerB?.id;
+        const canExecute = fromPlayerId === this.authenticatedUserId;
+        
+        if (!canExecute) {
+          console.log(`Skipping transfer from ${plan.fromPlayer} - not authenticated as owner (${fromPlayerId})`);
+        } else {
+          console.log(`Will execute transfer from ${plan.fromPlayer} - authenticated as owner (${fromPlayerId})`);
+        }
+        
+        return canExecute;
+      });
+
+      if (authenticatedUserTransfers.length === 0) {
+        console.log('No transfers can be executed by authenticated user');
+        return { 
+          success: true, 
+          operations: [],
+          error: 'No transfers required from authenticated user'
+        };
+      }
+
       // Get Flow addresses for all players
       console.log('Getting Flow addresses for players...');
       const playersWithAddresses = await this.getPlayersFlowAddresses(match);
       console.log(`Flow addresses obtained - PlayerA: ${playersWithAddresses.playerA.flowAddress}, PlayerB: ${playersWithAddresses.playerB?.flowAddress}`);
       
-      // Execute all transfers
+      // Execute only the transfers that the authenticated user can perform
       const operations: NFTTransferOperation[] = [];
       
-      for (const plan of transferPlan) {
+      for (const plan of authenticatedUserTransfers) {
         console.log(`Executing transfer: ${plan.nft.name} from ${plan.fromPlayer} to ${plan.toPlayer}`);
         const operation = await this.executeTransfer(plan, playersWithAddresses, match);
         operations.push(operation);
@@ -100,7 +128,7 @@ export class NFTTransferService {
         op.status === 'COMPLETED' || op.status === 'IN_PROGRESS'
       );
       
-      console.log(`All transfers completed. Success: ${allSuccessful}`);
+      console.log(`All authenticated user transfers completed. Success: ${allSuccessful}`);
       console.log('Transfer statuses:', operations.map(op => `${op.nftId}: ${op.status}`));
       
       return {
@@ -306,8 +334,9 @@ export class NFTTransferService {
         
         const withdrawInput = {
           tokenID: operation.nftTokenId.toString(),
-          destinationAddress: operation.toAddress,
-          dappID: transferPlan.nft.dappID!
+          destinationAddress: operation.toAddress.startsWith('0x') ? operation.toAddress : `0x${operation.toAddress}`,
+          dappID: transferPlan.nft.dappID!,
+          contractQualifiedName: "A.877931736ee77cff.TopShot"
         };
 
         console.log('Withdraw input:', JSON.stringify(withdrawInput, null, 2));
@@ -411,14 +440,17 @@ export class NFTTransferService {
 export async function createNFTTransferService(serverSideContext?: { 
   accessToken?: string;
   cookies?: string;
+  authenticatedUserId?: string;
 }): Promise<NFTTransferService> {
   let accessToken: string;
+  let authenticatedUserId: string;
 
-  if (serverSideContext?.accessToken) {
-    // Use provided access token (for server-side calls)
+  if (serverSideContext?.accessToken && serverSideContext?.authenticatedUserId) {
+    // Use provided access token and user ID (for server-side calls)
     accessToken = serverSideContext.accessToken;
+    authenticatedUserId = serverSideContext.authenticatedUserId;
   } else {
-    // Get access token from the API (for client-side calls)
+    // Get access token and user info from the API (for client-side calls)
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
@@ -427,34 +459,55 @@ export async function createNFTTransferService(serverSideContext?: {
     if (serverSideContext?.cookies) {
       headers['Cookie'] = serverSideContext.cookies;
     }
+    
+    const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:4000';
 
-    const tokenResponse = await fetch('/api/access-token', { headers });
+    // Get access token
+    const tokenResponse = await fetch(`${baseUrl}/api/access-token`, { headers });
     if (!tokenResponse.ok) {
-      throw new Error('Failed to get access token for NFT transfer');
+      const errorText = await tokenResponse.text();
+      console.error('Token response error:', errorText);
+      throw new Error(`Failed to get access token for NFT transfer: ${tokenResponse.status}`);
     }
     
     const tokenData = await tokenResponse.json();
     if (!tokenData.accessToken) {
       throw new Error('No access token available for NFT transfer');
     }
-
     accessToken = tokenData.accessToken;
+
+    // Get authenticated user info
+    const userResponse = await fetch(`${baseUrl}/auth/profile`, { headers });
+    if (!userResponse.ok) {
+      const errorText = await userResponse.text();
+      console.error('User info response error:', errorText);
+      throw new Error(`Failed to get authenticated user info for NFT transfer: ${userResponse.status}`);
+    }
+    
+    const userData = await userResponse.json();
+    if (!userData.sub) {
+      throw new Error('No authenticated user ID available for NFT transfer');
+    }
+    authenticatedUserId = userData.sub;
   }
 
   const context: TransferContext = {
     accessToken,
-    graphqlEndpoint: 'https://staging.accounts.meetdapper.com/graphql'
+    graphqlEndpoint: 'https://staging.accounts.meetdapper.com/graphql',
+    authenticatedUserId
   };
 
+  console.log(`Creating NFT transfer service for user: ${authenticatedUserId}`);
   return new NFTTransferService(context);
 }
 
 /**
  * Convenience function to handle match finish and trigger transfers
+ * IMPORTANT: This now only executes transfers FROM the authenticated user
  */
 export async function handleMatchFinishTransfers(
   match: Match, 
-  serverSideContext?: { accessToken?: string; cookies?: string }
+  serverSideContext?: { accessToken?: string; cookies?: string; authenticatedUserId?: string }
 ): Promise<{
   success: boolean;
   operations: NFTTransferOperation[];

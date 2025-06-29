@@ -367,7 +367,7 @@ const kvDB = {
       console.error('Error cleaning up expired automatch entries:', error);
       return 0;
     }
-  }
+  },
 };
 
 export const db = kvDB;

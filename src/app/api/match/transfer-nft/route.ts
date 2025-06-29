@@ -63,9 +63,12 @@ export async function POST(request: NextRequest) {
     });
 
     console.log(`Starting NFT transfer for match ${matchId}`);
+    console.log(`Authenticated user: ${session.user.sub}`);
 
-    // Execute the transfers
-    const transferResult = await handleMatchFinishTransfers(match);
+    // Execute the transfers with authenticated user context
+    const transferResult = await handleMatchFinishTransfers(match, {
+      authenticatedUserId: session.user.sub
+    });
 
     // Update match with transfer results
     const updateData: {

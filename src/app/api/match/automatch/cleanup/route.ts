@@ -28,7 +28,7 @@ export async function POST() {
       });
     }
 
-    const rarities = ['common', 'rare', 'epic', 'legendary', 'fandom'];
+    const rarities = ['common', 'fandom', 'rare', 'legendary', 'ultimate'];
     let totalCleaned = 0;
 
     for (const rarity of rarities) {

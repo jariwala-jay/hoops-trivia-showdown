@@ -1,5 +1,6 @@
 import { auth0 } from '@/lib/auth0';
 import Image from 'next/image';
+import { truncateName } from '@/lib/utils';
 
 export default async function AuthButton() {
   const session = await auth0.getSession();
@@ -19,11 +20,11 @@ export default async function AuthButton() {
             />
           )}
           <span className="text-white font-medium">
-            {user.name || user.email}
+            {truncateName(user.name || user.email)}
           </span>
         </div>
         <a 
-          href="/api/logout"
+          href="/auth/logout"
           className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
         >
           Logout
@@ -34,7 +35,7 @@ export default async function AuthButton() {
 
   return (
     <a 
-      href="/api/login"
+      href="/auth/login"
       className="px-6 py-3 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 transition-colors"
     >
       Login

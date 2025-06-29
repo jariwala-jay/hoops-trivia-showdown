@@ -1,96 +1,417 @@
-import Link from 'next/link';
-import AuthButton from '@/components/AuthButton';
+'use client';
+
+
+import ClientAuthButton from '@/components/ClientAuthButton';
+import Navbar from '@/components/Navbar';
+import Container from '@/components/Container';
+import Card from '@/components/Card';
+import Hero from '@/components/Hero';
+import ProtectedLink from '@/components/ProtectedLink';
+import Image from 'next/image';
+import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 
 export default function Home() {
+  const battleModeAnimation = useScrollAnimation({ threshold: 0.2 });
+  const howToPlayAnimation = useScrollAnimation({ threshold: 0.2 });
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-500 to-red-600">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="mb-6">
-            <AuthButton />
+    <>
+      <Navbar authButton={<ClientAuthButton />} />
+      
+      {/* Hero Section */}
+      <Hero />
+
+      {/* Game Modes Section */}
+      <div 
+        ref={battleModeAnimation.ref}
+        style={{ 
+          paddingTop: '4rem',
+          paddingBottom: '4rem',
+          backgroundColor: 'rgba(0, 0, 0, 0.2)'
+        }}
+      >
+        <Container size="xl">
+          <div style={{
+            textAlign: 'center',
+            marginBottom: '3rem',
+            opacity: battleModeAnimation.isVisible ? 1 : 0,
+            transform: battleModeAnimation.isVisible ? 'translateY(0)' : 'translateY(30px)',
+            transition: 'all 0.8s ease-out'
+          }}>
+            <h2 style={{
+              fontSize: '2.5rem',
+              fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+              fontWeight: 700,
+              color: '#F8F9FA',
+              marginBottom: '1rem'
+            }}>
+              Choose Your Battle Mode
+            </h2>
+            <p style={{
+              fontSize: '1.125rem',
+              color: '#D1D5DB',
+              maxWidth: '48rem',
+              margin: '0 auto',
+              opacity: 0.9
+            }}>
+              Three ways to compete in the ultimate NBA trivia showdown
+            </p>
           </div>
-          <h1 className="text-6xl font-bold text-white mb-4 drop-shadow-lg animate-pulse">
-            🏀 HOOPS TRIVIA SHOWDOWN
-          </h1>
-          <p className="text-xl text-orange-100 mb-8 max-w-2xl mx-auto">
-            Stake your NBA NFTs and battle in the ultimate basketball trivia competition! 
-            Test your knowledge, win rewards, and claim victory on the court.
-          </p>
-        </div>
 
-        {/* Game Modes */}
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12">
-          {/* Quick Match */}
-          <Link href="/automatch" className="group">
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-8 text-center hover:bg-white/20 transition-all duration-300 border-2 border-white/20 hover:border-white/40 transform hover:scale-105 hover:shadow-2xl">
-              <div className="text-6xl mb-4 group-hover:animate-bounce">⚡</div>
-              <h2 className="text-2xl font-bold text-white mb-3">QUICK MATCH</h2>
-              <p className="text-orange-100 mb-6">
-                Get matched automatically with opponents of the same NFT rarity
-              </p>
-              <div className="bg-gradient-to-r from-purple-400 to-pink-500 text-white font-bold py-3 px-6 rounded-lg group-hover:from-purple-300 group-hover:to-pink-400 transition-all duration-200 transform group-hover:scale-110">
-                ⚡ FIND MATCH
-              </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '2rem',
+            maxWidth: '72rem',
+            margin: '0 auto'
+          }}>
+            {/* Quick Match */}
+            <div style={{
+              opacity: battleModeAnimation.isVisible ? 1 : 0,
+              transform: battleModeAnimation.isVisible ? 'translateY(0)' : 'translateY(40px)',
+              transition: 'all 0.8s ease-out',
+              transitionDelay: battleModeAnimation.isVisible ? '0.2s' : '0s'
+            }}>
+              <ProtectedLink href="/automatch" style={{ textDecoration: 'none' }}>
+                <Card className="text-center hover:scale-105 transition-transform duration-300 h-full">
+                <div style={{
+                  width: '4rem',
+                  height: '4rem',
+                  borderRadius: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 1.5rem auto',
+                  fontSize: '1.5rem'
+                }}>
+                  <Image src="/quick_match.png" alt="Quick Match" width={50} height={50} />
+                </div>
+                <h3 style={{
+                  fontSize: '1.5rem',
+                  fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                  fontWeight: 700,
+                  color: '#F8F9FA',
+                  marginBottom: '0.75rem'
+                }}>
+                  Quick Match
+                </h3>
+                <p style={{
+                  color: '#D1D5DB',
+                  marginBottom: '1.5rem',
+                  lineHeight: '1.5'
+                }}>
+                  Get matched automatically with opponents of the same NFT rarity. 
+                  Fast, fair, and instant competition.
+                </p>
+                <div className="btn btn-primary" style={{
+                  display: 'inline-block',
+                  textDecoration: 'none'
+                }}>
+                  Find Match
+                </div>
+              </Card>
+            </ProtectedLink>
             </div>
-          </Link>
 
-          {/* Create Match */}
-          <Link href="/create" className="group">
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-8 text-center hover:bg-white/20 transition-all duration-300 border-2 border-white/20 hover:border-white/40 transform hover:scale-105 hover:shadow-2xl">
-              <div className="text-6xl mb-4 group-hover:animate-bounce">🚀</div>
-              <h2 className="text-2xl font-bold text-white mb-3">CREATE MATCH</h2>
-              <p className="text-orange-100 mb-6">
-                Start a new trivia battle and wait for an opponent to challenge you
-              </p>
-              <div className="bg-gradient-to-r from-orange-400 to-red-500 text-white font-bold py-3 px-6 rounded-lg group-hover:from-orange-300 group-hover:to-red-400 transition-all duration-200 transform group-hover:scale-110">
-                🎯 CREATE GAME
-              </div>
+            {/* Create Match */}
+            <div style={{
+              opacity: battleModeAnimation.isVisible ? 1 : 0,
+              transform: battleModeAnimation.isVisible ? 'translateY(0)' : 'translateY(40px)',
+              transition: 'all 0.8s ease-out',
+              transitionDelay: battleModeAnimation.isVisible ? '0.4s' : '0s'
+            }}>
+              <ProtectedLink href="/create" style={{ textDecoration: 'none' }}>
+                <Card className="text-center hover:scale-105 transition-transform duration-300 h-full">
+                <div style={{
+                  width: '4rem',
+                  height: '4rem',
+                  borderRadius: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 1.5rem auto',
+                  fontSize: '1.5rem'
+                }}>
+                  <Image src="/create_match.png" alt="Create Match" width={50} height={50} />
+                </div>
+                <h3 style={{
+                  fontSize: '1.5rem',
+                  fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                  fontWeight: 700,
+                  color: '#F8F9FA',
+                  marginBottom: '0.75rem'
+                }}>
+                  Create Match
+                </h3>
+                <p style={{
+                  color: '#D1D5DB',
+                  marginBottom: '1.5rem',
+                  lineHeight: '1.5'
+                }}>
+                  Start a new trivia battle and share with friends. 
+                  Set the stakes and wait for challengers.
+                </p>
+                <div className="btn btn-primary" style={{
+                  display: 'inline-block',
+                  textDecoration: 'none'
+                }}>
+                  Create Game
+                </div>
+              </Card>
+            </ProtectedLink>
             </div>
-          </Link>
 
-          {/* Join Match */}
-          <Link href="/join" className="group">
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-8 text-center hover:bg-white/20 transition-all duration-300 border-2 border-white/20 hover:border-white/40 transform hover:scale-105 hover:shadow-2xl">
-              <div className="text-6xl mb-4 group-hover:animate-bounce">🔗</div>
-              <h2 className="text-2xl font-bold text-white mb-3">JOIN MATCH</h2>
-              <p className="text-orange-100 mb-6">
-                Enter a match ID and join an existing trivia battle
-              </p>
-              <div className="bg-gradient-to-r from-blue-400 to-purple-500 text-white font-bold py-3 px-6 rounded-lg group-hover:from-blue-300 group-hover:to-purple-400 transition-all duration-200 transform group-hover:scale-110">
-                ⚔️ JOIN BATTLE
-              </div>
-            </div>
-          </Link>
-        </div>
-
-        {/* How to Play */}
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-8 max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-white mb-6 text-center">How to Play</h2>
-          <div className="grid md:grid-cols-3 gap-6 text-center">
-            <div className="text-white group hover:transform hover:scale-105 transition-all duration-200">
-              <div className="text-4xl mb-3 group-hover:animate-pulse">1️⃣</div>
-              <h3 className="text-xl font-semibold mb-2">Select Your NFT</h3>
-              <p className="text-orange-100">Choose your NBA NFT to stake in the match</p>
-            </div>
-            <div className="text-white group hover:transform hover:scale-105 transition-all duration-200">
-              <div className="text-4xl mb-3 group-hover:animate-pulse">2️⃣</div>
-              <h3 className="text-xl font-semibold mb-2">Answer Questions</h3>
-              <p className="text-orange-100">Beat the 24-second shot clock on NBA trivia</p>
-            </div>
-            <div className="text-white group hover:transform hover:scale-105 transition-all duration-200">
-              <div className="text-4xl mb-3 group-hover:animate-pulse">3️⃣</div>
-              <h3 className="text-xl font-semibold mb-2">Win & Claim</h3>
-              <p className="text-orange-100">Highest score wins both NFTs!</p>
+            {/* Join Match */}
+            <div style={{
+              opacity: battleModeAnimation.isVisible ? 1 : 0,
+              transform: battleModeAnimation.isVisible ? 'translateY(0)' : 'translateY(40px)',
+              transition: 'all 0.8s ease-out',
+              transitionDelay: battleModeAnimation.isVisible ? '0.6s' : '0s'
+            }}>
+              <ProtectedLink href="/join" style={{ textDecoration: 'none' }}>
+                <Card className="text-center hover:scale-105 transition-transform duration-300 h-full">
+                <div style={{
+                  width: '4rem',
+                  height: '4rem',
+                  borderRadius: '1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 1.5rem auto',
+                  fontSize: '1.5rem'
+                }}>
+                  <Image src="/join_match.png" alt="Join Match" width={50} height={50} />
+                </div>
+                <h3 style={{
+                  fontSize: '1.5rem',
+                  fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                  fontWeight: 700,
+                  color: '#F8F9FA',
+                  marginBottom: '0.75rem'
+                }}>
+                  Join Match
+                </h3>
+                <p style={{
+                  color: '#D1D5DB',
+                  marginBottom: '1.5rem',
+                  lineHeight: '1.5'
+                }}>
+                  Enter a match ID and join an existing trivia battle. 
+                  Challenge friends or accept their invitation.
+                </p>
+                <div className="btn btn-primary" style={{
+                  display: 'inline-block',
+                  textDecoration: 'none'
+                }}>
+                  Join Battle
+                </div>
+              </Card>
+            </ProtectedLink>
             </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center mt-12 text-orange-100">
-          <p>Built with Next.js • Powered by Dapper Labs</p>
-        </div>
+        </Container>
       </div>
-    </div>
+
+      {/* How to Play Section */}
+      <div 
+        ref={howToPlayAnimation.ref}
+        style={{ 
+          paddingTop: '4rem',
+          paddingBottom: '4rem'
+        }}
+      >
+        <Container size="xl">
+          <div style={{ 
+            maxWidth: '64rem', 
+            margin: '0 auto',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              opacity: howToPlayAnimation.isVisible ? 1 : 0,
+              transform: howToPlayAnimation.isVisible ? 'translateY(0)' : 'translateY(30px)',
+              transition: 'all 0.8s ease-out'
+            }}>
+              <h2 style={{
+                fontSize: '2.5rem',
+                fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                fontWeight: 700,
+                color: '#F8F9FA',
+                marginBottom: '1rem'
+              }}>
+                How to Play
+              </h2>
+              <p style={{
+                fontSize: '1.125rem',
+                color: '#D1D5DB',
+                marginBottom: '3rem',
+                opacity: 0.9
+              }}>
+                Three simple steps to basketball trivia glory
+              </p>
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '3rem'
+            }}>
+              <div style={{ 
+                textAlign: 'center',
+                padding: '2rem',
+                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                borderRadius: '1rem',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                opacity: howToPlayAnimation.isVisible ? 1 : 0,
+                transform: howToPlayAnimation.isVisible ? 'translateY(0)' : 'translateY(40px)',
+                transition: 'all 0.8s ease-out',
+                transitionDelay: howToPlayAnimation.isVisible ? '0.2s' : '0s'
+              }}>
+                <div style={{ 
+                  fontSize: '2rem', 
+                  marginBottom: '1rem',
+                  background: 'linear-gradient(135deg, #FF6E00, #E63946)',
+                  borderRadius: '50%',
+                  width: '4rem',
+                  height: '4rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 1rem auto',
+                  color: 'white',
+                  fontWeight: 700
+                }}>
+                  1
+                </div>
+                <h3 style={{
+                  fontSize: '1.25rem',
+                  fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                  fontWeight: 600,
+                  marginBottom: '0.75rem',
+                  color: '#F8F9FA'
+                }}>
+                  Select Your NFT
+                </h3>
+                <p style={{ 
+                  color: '#D1D5DB',
+                  lineHeight: '1.5'
+                }}>
+                  Choose your NBA TopShot NFT to stake in the match. 
+                  Only players with the same rarity can compete.
+                </p>
+              </div>
+
+              <div style={{ 
+                textAlign: 'center',
+                padding: '2rem',
+                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                borderRadius: '1rem',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                opacity: howToPlayAnimation.isVisible ? 1 : 0,
+                transform: howToPlayAnimation.isVisible ? 'translateY(0)' : 'translateY(40px)',
+                transition: 'all 0.8s ease-out',
+                transitionDelay: howToPlayAnimation.isVisible ? '0.4s' : '0s'
+              }}>
+                <div style={{ 
+                  fontSize: '2rem', 
+                  marginBottom: '1rem',
+                  background: 'linear-gradient(135deg, #FF6E00, #E63946)',
+                  borderRadius: '50%',
+                  width: '4rem',
+                  height: '4rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 1rem auto',
+                  color: 'white',
+                  fontWeight: 700
+                }}>
+                  2
+                </div>
+                <h3 style={{
+                  fontSize: '1.25rem',
+                  fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                  fontWeight: 600,
+                  marginBottom: '0.75rem',
+                  color: '#F8F9FA'
+                }}>
+                  Answer Questions
+                </h3>
+                <p style={{ 
+                  color: '#D1D5DB',
+                  lineHeight: '1.5'
+                }}>
+                  Beat the 24-second shot clock on NBA trivia questions. 
+                  Quick thinking and basketball knowledge are key.
+                </p>
+              </div>
+
+              <div style={{ 
+                textAlign: 'center',
+                padding: '2rem',
+                backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                borderRadius: '1rem',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                opacity: howToPlayAnimation.isVisible ? 1 : 0,
+                transform: howToPlayAnimation.isVisible ? 'translateY(0)' : 'translateY(40px)',
+                transition: 'all 0.8s ease-out',
+                transitionDelay: howToPlayAnimation.isVisible ? '0.6s' : '0s'
+              }}>
+                <div style={{ 
+                  fontSize: '2rem', 
+                  marginBottom: '1rem',
+                  background: 'linear-gradient(135deg, #FF6E00, #E63946)',
+                  borderRadius: '50%',
+                  width: '4rem',
+                  height: '4rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 1rem auto',
+                  color: 'white',
+                  fontWeight: 700
+                }}>
+                  3
+                </div>
+                <h3 style={{
+                  fontSize: '1.25rem',
+                  fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                  fontWeight: 600,
+                  marginBottom: '0.75rem',
+                  color: '#F8F9FA'
+                }}>
+                  Win & Claim
+                </h3>
+                <p style={{ 
+                  color: '#D1D5DB',
+                  lineHeight: '1.5'
+                }}>
+                  Highest score wins both NFTs! 
+                  The champion takes all the stakes.
+                </p>
+              </div>
+            </div>
+          </div>
+        </Container>
+      </div>
+
+      {/* Footer */}
+      <div style={{ 
+        paddingTop: '2rem',
+        paddingBottom: '2rem',
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+      }}>
+        <Container>
+          <div style={{ 
+            textAlign: 'center',
+            color: '#9CA3AF'
+          }}>
+            <p style={{ margin: 0 }}>
+              NBA TopShot Integration • Powered by Dapper Labs • Summer Hackathon 2025
+            </p>
+          </div>
+        </Container>
+      </div>
+    </>
   );
 }

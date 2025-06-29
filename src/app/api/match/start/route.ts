@@ -23,9 +23,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Waiting for second player' }, { status: 400 });
     }
 
-    // Start the match
+    // Start the match with INTRO state first
     const updatedMatch = await db.updateMatch(matchId, {
-      status: 'IN_PROGRESS' as const,
+      status: 'INTRO' as const,
       startedAt: new Date().toISOString(),
       currentQuestionIndex: 0
     });
@@ -33,6 +33,18 @@ export async function POST(request: NextRequest) {
     if (!updatedMatch) {
       return NextResponse.json({ error: 'Failed to start match' }, { status: 500 });
     }
+
+    // After intro duration, transition to IN_PROGRESS
+    setTimeout(async () => {
+      try {
+        await db.updateMatch(matchId, {
+          status: 'IN_PROGRESS' as const
+        });
+        console.log(`Match ${matchId} transitioned from INTRO to IN_PROGRESS`);
+      } catch (error) {
+        console.error(`Failed to transition match ${matchId} to IN_PROGRESS:`, error);
+      }
+    }, 2000); // 2 second delay to match LogoIntro duration
 
     return NextResponse.json({ 
       status: 'success',

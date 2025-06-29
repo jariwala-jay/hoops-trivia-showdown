@@ -1,61 +1,69 @@
 import { NFT } from '@/types';
 
-export const MOCK_NFTS: NFT[] = [
+export const MOCK_NFTS: (NFT & { contract?: string })[] = [
   {
     id: '1',
     name: 'LeBron James Dunk',
     image: '/testImage.jpg',
-    rarity: 'Legendary',
-    collection: 'NBA Top Shot'
+    rarity: 'Ultimate',
+    collection: 'NBA Top Shot',
+    contract: 'A.877931736ee77cff.TopShot'
   },
   {
     id: '2',
     name: 'Stephen Curry 3-Pointer',
     image: '/testImage.jpg',
     rarity: 'Rare',
-    collection: 'NBA Top Shot'
+    collection: 'NBA Top Shot',
+    contract: 'A.877931736ee77cff.TopShot'
   },
   {
     id: '3',
     name: 'Giannis Block',
     image: '/testImage.jpg',
-    rarity: 'Epic',
-    collection: 'NBA Top Shot'
+    rarity: 'Legendary',
+    collection: 'NBA Top Shot',
+    contract: 'A.877931736ee77cff.TopShot'
   },
   {
     id: '4',
     name: 'Kobe Fadeaway',
     image: '/testImage.jpg',
     rarity: 'Legendary',
-    collection: 'NBA Top Shot'
+    collection: 'NBA Top Shot',
+    contract: 'A.877931736ee77cff.TopShot'
   },
   {
     id: '5',
     name: 'Michael Jordan Dunk',
     image: '/testImage.jpg',
-    rarity: 'Legendary',
-    collection: 'NBA Top Shot'
+    rarity: 'Ultimate',
+    collection: 'NBA Top Shot',
+    contract: 'A.877931736ee77cff.TopShot'
   },
   {
     id: '6',
     name: 'Kevin Durant Shot',
     image: '/testImage.jpg',
-    rarity: 'Rare',
-    collection: 'NBA Top Shot'
+    rarity: 'Common',
+    collection: 'NBA Top Shot',
+    contract: 'A.877931736ee77cff.TopShot'
   },
   {
     id: '7',
     name: 'Kawhi Leonard Steal',
     image: '/testImage.jpg',
-    rarity: 'Epic',
-    collection: 'NBA Top Shot'
+    rarity: 'Rare',
+    collection: 'NBA Top Shot',
+    contract: 'A.877931736ee77cff.TopShot'
   },
   {
     id: '8',
     name: 'Luka Doncic Step-back',
     image: '/testImage.jpg',
-    rarity: 'Rare',
-    collection: 'NBA Top Shot'
+    rarity: 'Fandom',
+    collection: 'NBA Top Shot',
+    contract: 'A.877931736ee77cff.TopShot'
   }
 ];
 

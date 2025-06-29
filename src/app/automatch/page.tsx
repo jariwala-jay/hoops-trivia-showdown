@@ -4,9 +4,16 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import NFTSelector from '@/components/NFTSelector';
+import Navbar from '@/components/Navbar';
+import Container from '@/components/Container';
+import Card from '@/components/Card';
+import AnimatedButton from '@/components/AnimatedButton';
+import LoadingSpinner from '@/components/LoadingSpinner';
+import AuthGuard from '@/components/AuthGuard';
 import { NFT } from '@/types';
-import Image from 'next/image';
 import { useUserMoments } from '@/hooks/useUserMoments';
+import SelectedNFTDisplay from '@/components/SelectedNFTDisplay';
+
 export default function AutomatchPage() {
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
   const [isSearching, setIsSearching] = useState(false);
@@ -187,188 +194,287 @@ export default function AutomatchPage() {
 
   if (matchFound) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-500 to-blue-600">
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-8">
-              <div className="text-6xl mb-4 animate-bounce">🎉</div>
-              <h1 className="text-4xl font-bold text-white mb-4">Match Found!</h1>
-              <p className="text-green-100 text-xl">
-                Opponent found! Redirecting to match...
-              </p>
-              <div className="mt-6">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
-              </div>
+      <>
+        <Navbar />
+        <div style={{ 
+          minHeight: '100vh',
+          paddingTop: '4rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <Container size="sm">
+            <div style={{ textAlign: 'center' }}>
+              <Card>
+                <div style={{ fontSize: '4rem', marginBottom: '1rem' }} className="animate-bounce">🎉</div>
+                <h1 style={{
+                  fontSize: '2.5rem',
+                  fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                  fontWeight: 700,
+                  color: '#F8F9FA',
+                  marginBottom: '1rem'
+                }}>
+                  Match Found!
+                </h1>
+                <p style={{
+                  color: '#00C176',
+                  fontSize: '1.25rem',
+                  marginBottom: '1.5rem'
+                }}>
+                  Opponent found! Redirecting to match...
+                </p>
+                <div style={{ marginTop: '1.5rem' }}>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
+                </div>
+              </Card>
             </div>
-          </div>
+          </Container>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-500 to-pink-600">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <Link 
-            href="/" 
-            className="text-white hover:text-purple-200 transition-colors"
-          >
-            ← Back to Home
-          </Link>
-          <h1 className="text-4xl font-bold text-white">Quick Match</h1>
-          <div className="w-24"></div>
-        </div>
+    <AuthGuard>
+      <Navbar />
+      <div style={{ 
+        minHeight: '100vh',
+        paddingTop: '4rem'
+      }}>
+        <Container>
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '2rem',
+            paddingTop: '2rem'
+          }}>
+            <Link 
+              href="/" 
+              style={{
+                color: '#F8F9FA',
+                textDecoration: 'none',
+                opacity: 0.8,
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+            >
+              ← Back to Home
+            </Link>
+            <h1 style={{
+              fontSize: '2.5rem',
+              fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+              fontWeight: 700,
+              color: '#F8F9FA',
+              textAlign: 'center'
+            }}>
+              Quick Match
+            </h1>
+            <div style={{ width: '120px' }}></div>
+          </div>
 
-        <div className="max-w-6xl mx-auto">
           {/* Error Display */}
           {error && (
-            <div className="mb-6">
-              <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-4">
-                <div className="flex items-center space-x-2">
-                  <div className="text-red-400">⚠️</div>
-                  <span className="text-red-200">{error}</span>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <Card className="bg-red-500/20 border border-red-500/30">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ color: '#F87171' }}>⚠️</div>
+                  <span style={{ color: '#FECACA' }}>{error}</span>
                 </div>
-              </div>
+              </Card>
             </div>
           )}
 
           {/* Searching Status */}
           {isSearching && (
-            <div className="mb-6">
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-center">
-                <div className="text-4xl mb-4 animate-pulse">🔍</div>
-                <h2 className="text-2xl font-bold text-white mb-2">Searching for Opponent...</h2>
-                <p className="text-purple-100 mb-4">
-                  Looking for players with <strong>{selectedNFT?.rarity}</strong> rarity NFTs
-                </p>
-                
-                {/* Connection Status */}
-                <div className="mb-4">
-                  <span className={`inline-block px-3 py-1 rounded-full text-sm ${
-                    connectionStatus === 'connected' ? 'bg-green-500/20 text-green-400' :
-                    connectionStatus === 'connecting' ? 'bg-yellow-500/20 text-yellow-400' :
-                    'bg-red-500/20 text-red-400'
-                  }`}>
-                    {connectionStatus === 'connected' ? '🟢 Connected' :
-                     connectionStatus === 'connecting' ? '🟡 Connecting...' :
-                     '🔴 Disconnected'}
-                  </span>
-                </div>
-                
-                <div className="bg-black/20 rounded-lg p-4 mb-4">
-                  <div className="text-3xl font-bold text-white mb-2">{timeRemaining}s</div>
-                  <div className="w-full bg-gray-600 rounded-full h-2">
-                    <div 
-                      className="bg-purple-400 h-2 rounded-full transition-all duration-1000"
-                      style={{ width: `${(timeRemaining / 20) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                {queueSize > 0 && (
-                  <p className="text-purple-200 mb-4">
-                    {queueSize} player(s) in queue for {selectedNFT?.rarity} rarity
+            <div style={{ marginBottom: '1.5rem' }}>
+              <Card>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }} className="animate-pulse">🔍</div>
+                  <h2 style={{
+                    fontSize: '1.5rem',
+                    fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                    fontWeight: 700,
+                    color: '#F8F9FA',
+                    marginBottom: '0.5rem'
+                  }}>
+                    Searching for Opponent...
+                  </h2>
+                  <p style={{
+                    color: '#D1D5DB',
+                    marginBottom: '1rem'
+                  }}>
+                    Looking for players with <strong>{selectedNFT?.rarity}</strong> rarity NFTs
                   </p>
-                )}
+                  
+                  {/* Connection Status */}
+                  <div style={{ marginBottom: '1rem' }}>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: '9999px',
+                      fontSize: '0.875rem',
+                      ...(connectionStatus === 'connected' ? 
+                        { backgroundColor: 'rgba(16, 185, 129, 0.2)', color: '#10B981' } :
+                        connectionStatus === 'connecting' ? 
+                        { backgroundColor: 'rgba(245, 158, 11, 0.2)', color: '#F59E0B' } :
+                        { backgroundColor: 'rgba(239, 68, 68, 0.2)', color: '#EF4444' })
+                    }}>
+                      {connectionStatus === 'connected' ? '🟢 Connected' :
+                       connectionStatus === 'connecting' ? '🟡 Connecting...' :
+                       '🔴 Disconnected'}
+                    </span>
+                  </div>
+                  
+                  <div style={{
+                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                    borderRadius: '0.5rem',
+                    padding: '1rem',
+                    marginBottom: '1rem'
+                  }}>
+                    <div style={{
+                      fontSize: '2rem',
+                      fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                      fontWeight: 700,
+                      color: '#F8F9FA',
+                      marginBottom: '0.5rem'
+                    }}>
+                      {timeRemaining}s
+                    </div>
+                    <div style={{
+                      width: '100%',
+                      backgroundColor: 'rgba(156, 163, 175, 0.3)',
+                      borderRadius: '9999px',
+                      height: '0.5rem'
+                    }}>
+                      <div 
+                        style={{
+                          backgroundColor: '#FF6E00',
+                          height: '0.5rem',
+                          borderRadius: '9999px',
+                          transition: 'width 1s ease-in-out',
+                          width: `${(timeRemaining / 20) * 100}%`
+                        }}
+                      ></div>
+                    </div>
+                  </div>
 
-                <button
-                  onClick={cancelSearch}
-                  className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-400 transition-colors"
-                >
-                  Cancel Search
-                </button>
-              </div>
+                  {queueSize > 0 && (
+                    <p style={{
+                      color: '#D1D5DB',
+                      marginBottom: '1rem',
+                      fontSize: '0.875rem'
+                    }}>
+                      {queueSize} player(s) in queue for {selectedNFT?.rarity} rarity
+                    </p>
+                  )}
+
+                  <AnimatedButton
+                    onClick={cancelSearch}
+                    variant="secondary"
+                    size="md"
+                  >
+                    Cancel Search
+                  </AnimatedButton>
+                </div>
+              </Card>
             </div>
           )}
+         
 
           {/* NFT Selection */}
           {!isSearching && (
             <>
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-6">
-                <h2 className="text-2xl font-bold text-white mb-4">Select Your NFT to Stake</h2>
-                <p className="text-purple-100 mb-6">
-                  Choose an NFT to stake. You&apos;ll be matched with opponents who have NFTs of the same rarity.
-                </p>
-                
-                <NFTSelector
-                  selectedNFT={selectedNFT}
-                  onSelect={setSelectedNFT}
-                />
-              </div>
-
-              {/* Selected NFT Preview */}
+              {/* Selected NFT and Action Button at Top */}
               {selectedNFT && (
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 mb-6">
-                  <h2 className="text-2xl font-bold text-white mb-4">Selected NFT</h2>
-                  <div className="flex items-center space-x-4">
-                    <div className="w-24 h-32 relative rounded-lg overflow-hidden">
-                    <Image
-                        src={selectedNFT.image}
-                        alt={selectedNFT.name}
-                        className="w-full h-full object-cover"
-                        width={100}
-                        height={100}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <Card>
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      gap: '1rem'
+                    }}>
+                      <SelectedNFTDisplay 
+                        nft={selectedNFT}
+                        title="Ready to Battle"
+                        compact={true}
+                        customMessage={`Matched with ${selectedNFT.rarity} rarity opponents`}
                       />
+                      
+                      <div style={{ 
+                        display: 'flex', 
+                        gap: '1rem',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                        paddingTop: '1rem'
+                      }}>
+                        {momentsLoading ? (
+                          <LoadingSpinner size="md" text="Loading..." />
+                        ) : (
+                          <AnimatedButton
+                            onClick={startAutomatch}
+                            disabled={!selectedNFT || !flowAddress}
+                            variant="primary"
+                            size="lg"
+                          >
+                            Find Quick Match
+                          </AnimatedButton>
+                        )}
+                        
+                      </div>
+                      
+                      {!momentsLoading && !flowAddress && (
+                        <div style={{
+                          textAlign: 'center',
+                          padding: '0.75rem',
+                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                          borderRadius: '0.5rem',
+                          border: '1px solid rgba(239, 68, 68, 0.2)'
+                        }}>
+                          <p style={{ color: '#FECACA', margin: 0, fontSize: '0.875rem' }}>
+                            ⚠️ Flow address not available. Please refresh the page.
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-white">{selectedNFT.name}</h3>
-                      <p className="text-purple-100">{selectedNFT.collection}</p>
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium mt-2 ${
-                        selectedNFT.rarity?.toLowerCase() === 'legendary' ? 'bg-yellow-400/20 text-yellow-400' :
-                        selectedNFT.rarity?.toLowerCase() === 'epic' ? 'bg-purple-400/20 text-purple-400' :
-                        selectedNFT.rarity?.toLowerCase() === 'rare' ? 'bg-blue-400/20 text-blue-400' :
-                        'bg-gray-400/20 text-gray-400'
-                      }`}>
-                        {selectedNFT.rarity}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-4 p-4 bg-purple-500/20 rounded-lg">
-                    <p className="text-purple-200 text-sm">
-                      💡 <strong>Real-time Matching:</strong> You&apos;ll be instantly notified when an opponent with <strong>{selectedNFT.rarity}</strong> rarity NFTs joins. 
-                      No more waiting or refreshing!
-                    </p>
-                  </div>
+                  </Card>
                 </div>
               )}
 
-              {/* Start Button */}
-              <div className="text-center">
-                <button
-                  onClick={startAutomatch}
-                  disabled={!selectedNFT || momentsLoading || !flowAddress}
-                  className={`px-8 py-4 rounded-xl font-bold text-xl transition-all duration-200 ${
-                    !selectedNFT || momentsLoading || !flowAddress
-                      ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
-                      : 'bg-purple-500 text-white hover:bg-purple-400 transform hover:scale-105 shadow-lg hover:shadow-xl'
-                  }`}
-                >
-                  ⚡ Find Quick Match
-                </button>
-                
-                {momentsLoading && (
-                  <p className="text-purple-200 mt-4">
-                    Loading your Flow address...
+              <div style={{ marginBottom: '1.5rem' }}>
+                <Card>
+                  <h2 style={{
+                    fontSize: '1.5rem',
+                    fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                    fontWeight: 700,
+                    color: '#F8F9FA',
+                    marginBottom: '1rem'
+                  }}>
+                    {selectedNFT ? 'Choose a Different NFT' : 'Select Your NFT to Stake'}
+                  </h2>
+                  <p style={{
+                    color: '#D1D5DB',
+                    marginBottom: '1.5rem',
+                    lineHeight: '1.5'
+                  }}>
+                    Choose an NFT to stake. You&apos;ll be matched with opponents who have NFTs of the same rarity.
                   </p>
-                )}
-                {!momentsLoading && !flowAddress && (
-                  <p className="text-purple-200 mt-4">
-                    Flow address not available. Please refresh the page.
-                  </p>
-                )}
-                {!selectedNFT && flowAddress && !momentsLoading && (
-                  <p className="text-purple-200 mt-4">
-                    Select an NFT to start matchmaking
-                  </p>
-                )}
+                  
+                  <NFTSelector
+                    selectedNFT={selectedNFT}
+                    onSelect={setSelectedNFT}
+                  />
+                </Card>
               </div>
+
+              
             </>
           )}
-        </div>
+        </Container>
       </div>
-    </div>
+    </AuthGuard>
   );
 } 

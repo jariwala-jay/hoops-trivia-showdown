@@ -19,6 +19,21 @@ const authLink = setContext(async (_, { headers }) => {
     
     if (!response.ok) {
       console.error('Failed to fetch access token:', response.status);
+      
+      // Check for auth errors
+      if (response.status === 401) {
+        try {
+          const errorData = await response.json();
+          if (errorData.requiresLogin) {
+            console.log('[APOLLO] Token expired, user needs to re-authenticate');
+            // Don't redirect here as Apollo might retry - let the component handle it
+            return { headers };
+          }
+        } catch {
+          // Ignore JSON parse errors
+        }
+      }
+      
       return { headers };
     }
     

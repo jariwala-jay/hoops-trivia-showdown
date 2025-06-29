@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { NFT } from '@/types';
 import { MOCK_NFTS } from '@/lib/mockData';
 import { useUserMoments } from '@/hooks/useUserMoments';
+import { useUser } from '@auth0/nextjs-auth0';
 import Image from 'next/image';
 
 interface NFTSelectorProps {
@@ -12,11 +13,15 @@ interface NFTSelectorProps {
   className?: string;
 }
 
+const ITEMS_PER_PAGE = 8; // 2x4 grid
+
 export default function NFTSelector({ selectedNFT, onSelect, className = '' }: NFTSelectorProps) {
   const [filter, setFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(0);
   const { moments, isLoading, error } = useUserMoments();
+  const { user } = useUser();
 
-  // Convert user moments to NFT format, fallback to mock data if no real moments
+  // Convert user moments to NFT format, only use mock data if user is not authenticated
   const userNFTs: (NFT & { title?: string; imageURL?: string; contract?: string; serialNumber?: number; dapp?: { name?: string }; description?: string })[] = 
     moments.length > 0 ? moments.map(moment => ({
       id: moment.id,
@@ -29,20 +34,44 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
       imageURL: moment.image,
       contract: 'A.877931736ee77cff.TopShot', // Use the actual TopShot contract
       serialNumber: moment.serialNumber
-    })) : MOCK_NFTS;
+    })) : user ? [] : MOCK_NFTS; // Only show mock data for unauthenticated users
+
+  // Filter NFTs by TopShot contract first, then by rarity
+  const topShotNFTs = userNFTs.filter(nft => {
+    // Only include TopShot moments, exclude PackNFT (packs)
+    const isTopShotMoment = nft.contract === 'A.877931736ee77cff.TopShot';
+    const isNotPack = nft.contract !== 'A.877931736ee77cff.PackNFT' && 
+                      !nft.title?.includes('NBA Top Shot Pack') &&
+                      !nft.description?.includes('Reveals official NBA Top Shot Moments when opened');
+    
+    return isTopShotMoment && isNotPack;
+  });
 
   const filteredNFTs = filter === 'all' 
-    ? userNFTs 
-    : userNFTs.filter(nft => nft.rarity?.toLowerCase() === filter.toLowerCase());
+    ? topShotNFTs 
+    : topShotNFTs.filter(nft => nft.rarity?.toLowerCase() === filter.toLowerCase());
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredNFTs.length / ITEMS_PER_PAGE);
+  const startIndex = currentPage * ITEMS_PER_PAGE;
+  const paginatedNFTs = filteredNFTs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  // Reset to first page when filter changes
+  const handleFilterChange = (newFilter: string) => {
+    setFilter(newFilter);
+    setCurrentPage(0);
+  };
 
   const getRarityColor = (rarity: string) => {
     switch (rarity.toLowerCase()) {
+      case 'ultimate':
+        return 'border-red-400 bg-red-400/10';
       case 'legendary':
         return 'border-yellow-400 bg-yellow-400/10';
-      case 'epic':
-        return 'border-purple-400 bg-purple-400/10';
       case 'rare':
         return 'border-blue-400 bg-blue-400/10';
+      case 'fandom':
+        return 'border-teal-400 bg-teal-400/10';
       case 'common':
         return 'border-green-400 bg-green-400/10';
       default:
@@ -78,42 +107,53 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
   return (
     <div className={`w-full ${className}`}>
       {/* Status Message */}
-      {moments.length === 0 && !isLoading && !error && (
+      {moments.length === 0 && !isLoading && !error && !user && (
         <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
           <p className="text-yellow-200 text-sm">
-            🎮 Using demo NFTs - your real Dapper moments will load here once authenticated
+            🎮 Using demo TopShot NFTs - your real Dapper moments will load here once authenticated
+          </p>
+        </div>
+      )}
+
+      {/* No NFTs message for authenticated users */}
+      {moments.length === 0 && !isLoading && !error && user && (
+        <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+          <p className="text-red-200 text-sm">
+            ⚠️ No NBA TopShot moments found in your account. You need TopShot moments to play.
           </p>
         </div>
       )}
       
-      {moments.length > 0 && (
-        <div className="mb-4 p-3 bg-green-500/20 border border-green-500/30 rounded-lg">
-          <p className="text-green-200 text-sm">
-            ✅ Loaded {moments.length} of your real Dapper moments!
+
+
+      {moments.length > 0 && topShotNFTs.length === 0 && (
+        <div className="mb-4 p-3 bg-orange-500/20 border border-orange-500/30 rounded-lg">
+          <p className="text-orange-200 text-sm">
+            ⚠️ No TopShot moments found in your {moments.length} items. Only opened TopShot moments (not packs) can be used in this game.
           </p>
         </div>
       )}
 
       {/* Filter Buttons */}
       <div className="flex flex-wrap gap-2 mb-6">
-        {['all', 'legendary', 'epic', 'rare', 'common'].map((rarity) => (
+        {['all', 'common', 'fandom', 'rare', 'legendary', 'ultimate'].map((rarity) => (
           <button
             key={rarity}
-            onClick={() => setFilter(rarity)}
+            onClick={() => handleFilterChange(rarity)}
             className={`px-4 py-2 rounded-lg font-medium capitalize transition-all ${
               filter === rarity
                 ? 'bg-orange-500 text-white'
                 : 'bg-white/10 text-white hover:bg-white/20'
             }`}
           >
-            {rarity === 'common' ? 'Fandom' : rarity}
+            {rarity}
           </button>
         ))}
       </div>
 
       {/* NFT Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {filteredNFTs.map((nft) => {
+        {paginatedNFTs.map((nft) => {
           const isWithdrawInProgress = nft.isWithdrawInProgress;
           const isDisabled = isWithdrawInProgress;
           
@@ -157,13 +197,14 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-gray-400">#{nft.serialNumber || 'N/A'}</span>
                   <span className={`text-xs px-2 py-1 rounded-full ${
+                    nft.rarity?.toLowerCase() === 'ultimate' ? 'bg-red-400/20 text-red-400' :
                     nft.rarity?.toLowerCase() === 'legendary' ? 'bg-yellow-400/20 text-yellow-400' :
-                    nft.rarity?.toLowerCase() === 'epic' ? 'bg-purple-400/20 text-purple-400' :
                     nft.rarity?.toLowerCase() === 'rare' ? 'bg-blue-400/20 text-blue-400' :
+                    nft.rarity?.toLowerCase() === 'fandom' ? 'bg-teal-400/20 text-teal-400' :
                     nft.rarity?.toLowerCase() === 'common' ? 'bg-green-400/20 text-green-400' :
                     'bg-gray-400/20 text-gray-400'
                   }`}>
-                    {nft.rarity === 'Common' ? 'Fandom' : nft.rarity}
+                    {nft.rarity}
                   </span>
                 </div>
               </div>
@@ -183,10 +224,69 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
         })}
       </div>
 
-      {filteredNFTs.length === 0 && (
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '1rem',
+          marginTop: '1.5rem'
+        }}>
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+            disabled={currentPage === 0}
+            className={`px-3 py-2 rounded-lg font-medium transition-all ${
+              currentPage === 0
+                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                : 'bg-white/10 text-white hover:bg-white/20'
+            }`}
+          >
+            ←
+          </button>
+          
+          <span className="text-white font-medium">
+            Page {currentPage + 1} of {totalPages}
+          </span>
+          
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+            disabled={currentPage === totalPages - 1}
+            className={`px-3 py-2 rounded-lg font-medium transition-all ${
+              currentPage === totalPages - 1
+                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                : 'bg-white/10 text-white hover:bg-white/20'
+            }`}
+          >
+            →
+          </button>
+        </div>
+      )}
+
+      {paginatedNFTs.length === 0 && filteredNFTs.length === 0 && (
         <div className="text-center py-12">
           <div className="text-4xl mb-4">🔍</div>
           <p className="text-white text-lg">No NFTs found for this filter</p>
+          {filter !== 'all' && (
+            <button
+              onClick={() => handleFilterChange('all')}
+              className="mt-2 text-orange-400 hover:text-orange-300 underline"
+            >
+              Clear filter
+            </button>
+          )}
+        </div>
+      )}
+
+      {paginatedNFTs.length === 0 && filteredNFTs.length > 0 && (
+        <div className="text-center py-8">
+          <p className="text-white text-lg">No more NFTs on this page</p>
+          <button
+            onClick={() => setCurrentPage(0)}
+            className="mt-2 text-orange-400 hover:text-orange-300 underline"
+          >
+            Go to first page
+          </button>
         </div>
       )}
     </div>

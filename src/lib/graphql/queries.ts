@@ -1,39 +1,6 @@
 import { gql } from '@apollo/client';
+import { TOKEN_INFO_FRAGMENT } from './fragments';
 
-// Token info fragment - core data structure for Dapper tokens/NFTs
-export const TOKEN_INFO_FRAGMENT = gql`
-  fragment TokenInfo on Token {
-    id
-    title
-    imageURL
-    description
-    serialNumber
-    acquiredAt
-    isWithdrawInProgress
-    favorite
-    contract
-    dapp {
-      id
-      name
-      tokenFallbackImageURL
-      tokenFallbackImageDarkURL
-      nftCanBeUsedAsAvatar
-    }
-    tokenContractData {
-      contract
-      storageInitializationCadence
-      checkInitializationCadence
-    }
-  }
-`;
-
-// Token withdrawal progress fragment
-export const TOKEN_WITHDRAW_PROGRESS_FRAGMENT = gql`
-  fragment TokenWithdrawProgress on Token {
-    id
-    isWithdrawInProgress
-  }
-`;
 
 // Main query to get user's tokens/NFTs from Dapper
 export const GET_TOKENS = gql`
