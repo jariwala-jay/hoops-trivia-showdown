@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { db, AutomatchEntry } from '@/lib/db';
-import { getRandomQuestions } from '@/lib/questions';
 import { auth0 } from '@/lib/auth0';
 import { Match, NFT } from '@/types';
 
@@ -64,7 +63,17 @@ export async function POST(request: NextRequest) {
     if (opponent) {
       // Found an opponent! Create a match immediately
       const matchId = uuidv4();
-      const questions = getRandomQuestions(5);
+      const questions = await db.getRandomQuestions(5, 'medium');
+
+      // CRITICAL: If we can't get questions, we must put the opponent back in the queue
+      if (questions.length < 5) {
+        console.error('Not enough questions in DB for automatch. Returning opponent to queue.');
+        await db.addToAutomatchQueue(opponent);
+        return NextResponse.json({ 
+          status: 'error',
+          message: 'Could not start match: not enough questions available.' 
+        }, { status: 500 });
+      }
 
       const match: Match = {
         id: matchId,

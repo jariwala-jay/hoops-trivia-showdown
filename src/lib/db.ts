@@ -1,13 +1,13 @@
-import { Match } from '@/types';
+import { Match, Question } from '@/types';
 
 // Try to import KV, but handle gracefully if not available
 let kv: { 
-  get: (key: string) => Promise<string | null>;
-  set: (key: string, value: string) => Promise<void>;
+  get: <T>(key: string) => Promise<T | null>;
+  set: <T>(key: string, value: T) => Promise<void>;
   del: (key: string) => Promise<number>;
-  sadd: (key: string, value: string) => Promise<number>;
-  srem: (key: string, value: string) => Promise<number>;
-  smembers: (key: string) => Promise<string[]>;
+  sadd: <T>(key: string, ...members: T[]) => Promise<number>;
+  srem: <T>(key: string, value: T) => Promise<number>;
+  smembers: <T>(key: string) => Promise<T[]>;
   expire: (key: string, seconds: number) => Promise<number>;
 } | null = null;
 
@@ -23,6 +23,7 @@ try {
 const MATCH_PREFIX = 'match:';
 const MATCHES_LIST = 'matches:all';
 const AUTOMATCH_QUEUE_PREFIX = 'automatch:';
+const QUESTIONS_PREFIX = 'questions:';
 
 // Automatch queue entry interface
 export interface AutomatchEntry {
@@ -165,10 +166,10 @@ const kvDB = {
     try {
       if (!kv) return fallbackDB.getMatch(id);
       
-      const matchData = await kv.get(`${MATCH_PREFIX}${id}`);
+      const matchData = await kv.get<Match>(`${MATCH_PREFIX}${id}`);
       if (!matchData) return null;
       
-      return typeof matchData === 'string' ? JSON.parse(matchData) : matchData;
+      return matchData;
     } catch (error) {
       console.error('Error getting match:', error);
       return fallbackDB.getMatch(id);
@@ -248,7 +249,62 @@ const kvDB = {
       return deletedCount;
     } catch (error) {
       console.error('Error cleaning up matches:', error);
+      return fallbackDB.cleanupOldMatches();
+    }
+  },
+
+  // Add a batch of questions to a difficulty set
+  addQuestions: async (questions: Question[], difficulty: string): Promise<number> => {
+    try {
+      if (!kv) return 0;
+      
+      const key = `${QUESTIONS_PREFIX}${difficulty.toLowerCase()}`;
+      // Let @vercel/kv handle serialization
+      const addedCount = await kv.sadd(key, ...questions);
+      
+      return addedCount;
+    } catch (error) {
+      console.error(`Error adding questions for difficulty ${difficulty}:`, error);
       return 0;
+    }
+  },
+
+  // Clear all questions for a given difficulty
+  clearQuestions: async (difficulty: string): Promise<number> => {
+    try {
+      if (!kv) return 0;
+      const key = `${QUESTIONS_PREFIX}${difficulty.toLowerCase()}`;
+      console.log(`Attempting to delete key: ${key}`);
+      const result = await kv.del(key);
+      console.log(`Successfully deleted key: ${key}, result: ${result}`);
+      return result;
+    } catch (error) {
+      console.error(`Error clearing questions for difficulty ${difficulty}:`, error);
+      return 0;
+    }
+  },
+
+  // Get a specific number of random questions from a difficulty set
+  getRandomQuestions: async (count: number, difficulty: string): Promise<Question[]> => {
+    try {
+      if (!kv) return [];
+
+      const key = `${QUESTIONS_PREFIX}${difficulty.toLowerCase()}`;
+      
+      // We expect @vercel/kv to return the objects directly
+      const allQuestions = await kv.smembers(key);
+
+      if (!allQuestions || allQuestions.length === 0) return [];
+      
+      // Shuffle the array and take the first `count` elements
+      const shuffled = allQuestions.sort(() => 0.5 - Math.random());
+      
+      return shuffled.slice(0, count) as Question[];
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Error in getRandomQuestions for difficulty ${difficulty}:`, errorMessage);
+      return [];
     }
   },
 
