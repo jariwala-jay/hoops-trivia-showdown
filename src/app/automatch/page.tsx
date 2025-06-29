@@ -9,6 +9,7 @@ import Container from '@/components/Container';
 import Card from '@/components/Card';
 import AnimatedButton from '@/components/AnimatedButton';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import AuthGuard from '@/components/AuthGuard';
 import { NFT } from '@/types';
 import { useUserMoments } from '@/hooks/useUserMoments';
 import SelectedNFTDisplay from '@/components/SelectedNFTDisplay';
@@ -234,7 +235,7 @@ export default function AutomatchPage() {
   }
 
   return (
-    <>
+    <AuthGuard>
       <Navbar />
       <div style={{ 
         minHeight: '100vh',
@@ -269,7 +270,7 @@ export default function AutomatchPage() {
               color: '#F8F9FA',
               textAlign: 'center'
             }}>
-              ⚡ Quick Match
+              Quick Match
             </h1>
             <div style={{ width: '120px' }}></div>
           </div>
@@ -419,7 +420,7 @@ export default function AutomatchPage() {
                             variant="primary"
                             size="lg"
                           >
-                            ⚡ Find Quick Match
+                            Find Quick Match
                           </AnimatedButton>
                         )}
                         
@@ -474,6 +475,6 @@ export default function AutomatchPage() {
           )}
         </Container>
       </div>
-    </>
+    </AuthGuard>
   );
 } 

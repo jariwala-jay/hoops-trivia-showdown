@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { NFT } from '@/types';
 import { MOCK_NFTS } from '@/lib/mockData';
 import { useUserMoments } from '@/hooks/useUserMoments';
+import { useUser } from '@auth0/nextjs-auth0';
 import Image from 'next/image';
 
 interface NFTSelectorProps {
@@ -19,8 +20,9 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '', com
   const [filter, setFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(0);
   const { moments, isLoading, error } = useUserMoments();
+  const { user } = useUser();
 
-  // Convert user moments to NFT format, fallback to mock data if no real moments
+  // Convert user moments to NFT format, only use mock data if user is not authenticated
   const userNFTs: (NFT & { title?: string; imageURL?: string; contract?: string; serialNumber?: number; dapp?: { name?: string }; description?: string })[] = 
     moments.length > 0 ? moments.map(moment => ({
       id: moment.id,
@@ -33,7 +35,7 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '', com
       imageURL: moment.image,
       contract: 'A.877931736ee77cff.TopShot', // Use the actual TopShot contract
       serialNumber: moment.serialNumber
-    })) : MOCK_NFTS;
+    })) : user ? [] : MOCK_NFTS; // Only show mock data for unauthenticated users
 
   // Filter NFTs by TopShot contract first, then by rarity
   const topShotNFTs = userNFTs.filter(nft => {
@@ -106,10 +108,19 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '', com
   return (
     <div className={`w-full ${className}`}>
       {/* Status Message */}
-      {moments.length === 0 && !isLoading && !error && (
+      {moments.length === 0 && !isLoading && !error && !user && (
         <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
           <p className="text-yellow-200 text-sm">
             🎮 Using demo TopShot NFTs - your real Dapper moments will load here once authenticated
+          </p>
+        </div>
+      )}
+
+      {/* No NFTs message for authenticated users */}
+      {moments.length === 0 && !isLoading && !error && user && (
+        <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+          <p className="text-red-200 text-sm">
+            ⚠️ No NBA TopShot moments found in your account. You need TopShot moments to play.
           </p>
         </div>
       )}

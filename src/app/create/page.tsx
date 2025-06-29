@@ -9,6 +9,7 @@ import Container from '@/components/Container';
 import Card from '@/components/Card';
 import AnimatedButton from '@/components/AnimatedButton';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import AuthGuard from '@/components/AuthGuard';
 import { NFT } from '@/types';
 import toast from 'react-hot-toast';
 import { useUserMoments } from '@/hooks/useUserMoments';
@@ -80,7 +81,7 @@ export default function CreateMatchPage() {
   };
 
   return (
-    <>
+    <AuthGuard>
       <Navbar />
       <div style={{ 
         minHeight: '100vh',
@@ -115,7 +116,7 @@ export default function CreateMatchPage() {
               color: '#F8F9FA',
               textAlign: 'center'
             }}>
-              🚀 Create Match
+              Create Match
             </h1>
             <div style={{ width: '120px' }}></div>
           </div>
@@ -225,6 +226,6 @@ export default function CreateMatchPage() {
 
         </Container>
       </div>
-    </>
+    </AuthGuard>
   );
 } 

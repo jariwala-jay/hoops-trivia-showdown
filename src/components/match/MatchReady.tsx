@@ -21,6 +21,7 @@ export default function MatchReady({ match, onStartGame }: MatchReadyProps) {
         paddingTop: '6rem',
         textAlign: 'center'
       }}>
+        
         <h1 style={{
           fontSize: '2.5rem',
           fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
@@ -28,7 +29,8 @@ export default function MatchReady({ match, onStartGame }: MatchReadyProps) {
           color: '#F8F9FA',
           marginBottom: '2rem'
         }}>
-          🏀 Match Ready!
+         
+           Match Ready!
         </h1>
         
         <div style={{

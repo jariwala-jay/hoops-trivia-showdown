@@ -21,7 +21,7 @@ export default function Navbar({ authButton }: { authButton?: React.ReactNode })
                 className="h-12 w-auto" 
               />
             </Link>
-            <Link href="/" className="text-white text-2xl font-extrabold ml-4 tracking-wider" style={{ fontFamily: 'var(--font-montserrat), sans-serif' }}>
+            <Link href="/" className="text-white sm:text-xl font-extrabold ml-4 tracking-wider" style={{ fontFamily: 'var(--font-montserrat), sans-serif' }}>
               HOOPS TRIVIA SHOWDOWN
             </Link>
           </div>

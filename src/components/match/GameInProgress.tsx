@@ -39,6 +39,7 @@ export default function GameInProgress({
       <div style={{ 
         maxWidth: '80rem', 
         margin: '0 auto', 
+        marginTop: '2rem',
         padding: '1rem',
         paddingTop: '5rem' // Reduced padding to prevent overlap
       }}>

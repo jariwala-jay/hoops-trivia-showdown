@@ -178,7 +178,7 @@ export default function JoinMatchPage() {
               color: '#F8F9FA',
               textAlign: 'center'
             }}>
-              ⚔️ Join Match
+              Join Match
             </h1>
             <div style={{ width: '120px' }}></div>
           </div>
