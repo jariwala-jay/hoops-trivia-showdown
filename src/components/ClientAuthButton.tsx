@@ -56,7 +56,7 @@ export default function ClientAuthButton() {
 
   return (
     <a 
-      href="/api/auth/login"
+      href="/auth/login"
       className="px-6 py-3 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 transition-colors"
     >
       Login
