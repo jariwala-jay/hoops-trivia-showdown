@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+
 import ClientAuthButton from '@/components/ClientAuthButton';
 import Navbar from '@/components/Navbar';
 import Container from '@/components/Container';
@@ -8,8 +8,12 @@ import Card from '@/components/Card';
 import Hero from '@/components/Hero';
 import ProtectedLink from '@/components/ProtectedLink';
 import Image from 'next/image';
+import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 
 export default function Home() {
+  const battleModeAnimation = useScrollAnimation({ threshold: 0.2 });
+  const howToPlayAnimation = useScrollAnimation({ threshold: 0.2 });
+
   return (
     <>
       <Navbar authButton={<ClientAuthButton />} />
@@ -18,15 +22,21 @@ export default function Home() {
       <Hero />
 
       {/* Game Modes Section */}
-      <div style={{ 
-        paddingTop: '4rem',
-        paddingBottom: '4rem',
-        backgroundColor: 'rgba(0, 0, 0, 0.2)'
-      }}>
+      <div 
+        ref={battleModeAnimation.ref}
+        style={{ 
+          paddingTop: '4rem',
+          paddingBottom: '4rem',
+          backgroundColor: 'rgba(0, 0, 0, 0.2)'
+        }}
+      >
         <Container size="xl">
           <div style={{
             textAlign: 'center',
-            marginBottom: '3rem'
+            marginBottom: '3rem',
+            opacity: battleModeAnimation.isVisible ? 1 : 0,
+            transform: battleModeAnimation.isVisible ? 'translateY(0)' : 'translateY(30px)',
+            transition: 'all 0.8s ease-out'
           }}>
             <h2 style={{
               fontSize: '2.5rem',
@@ -56,8 +66,14 @@ export default function Home() {
             margin: '0 auto'
           }}>
             {/* Quick Match */}
-            <ProtectedLink href="/automatch" style={{ textDecoration: 'none' }}>
-              <Card className="text-center hover:scale-105 transition-transform duration-300 h-full">
+            <div style={{
+              opacity: battleModeAnimation.isVisible ? 1 : 0,
+              transform: battleModeAnimation.isVisible ? 'translateY(0)' : 'translateY(40px)',
+              transition: 'all 0.8s ease-out',
+              transitionDelay: battleModeAnimation.isVisible ? '0.2s' : '0s'
+            }}>
+              <ProtectedLink href="/automatch" style={{ textDecoration: 'none' }}>
+                <Card className="text-center hover:scale-105 transition-transform duration-300 h-full">
                 <div style={{
                   width: '4rem',
                   height: '4rem',
@@ -95,10 +111,17 @@ export default function Home() {
                 </div>
               </Card>
             </ProtectedLink>
+            </div>
 
             {/* Create Match */}
-            <ProtectedLink href="/create" style={{ textDecoration: 'none' }}>
-              <Card className="text-center hover:scale-105 transition-transform duration-300 h-full">
+            <div style={{
+              opacity: battleModeAnimation.isVisible ? 1 : 0,
+              transform: battleModeAnimation.isVisible ? 'translateY(0)' : 'translateY(40px)',
+              transition: 'all 0.8s ease-out',
+              transitionDelay: battleModeAnimation.isVisible ? '0.4s' : '0s'
+            }}>
+              <ProtectedLink href="/create" style={{ textDecoration: 'none' }}>
+                <Card className="text-center hover:scale-105 transition-transform duration-300 h-full">
                 <div style={{
                   width: '4rem',
                   height: '4rem',
@@ -136,10 +159,17 @@ export default function Home() {
                 </div>
               </Card>
             </ProtectedLink>
+            </div>
 
             {/* Join Match */}
-            <ProtectedLink href="/join" style={{ textDecoration: 'none' }}>
-              <Card className="text-center hover:scale-105 transition-transform duration-300 h-full">
+            <div style={{
+              opacity: battleModeAnimation.isVisible ? 1 : 0,
+              transform: battleModeAnimation.isVisible ? 'translateY(0)' : 'translateY(40px)',
+              transition: 'all 0.8s ease-out',
+              transitionDelay: battleModeAnimation.isVisible ? '0.6s' : '0s'
+            }}>
+              <ProtectedLink href="/join" style={{ textDecoration: 'none' }}>
+                <Card className="text-center hover:scale-105 transition-transform duration-300 h-full">
                 <div style={{
                   width: '4rem',
                   height: '4rem',
@@ -177,38 +207,48 @@ export default function Home() {
                 </div>
               </Card>
             </ProtectedLink>
+            </div>
           </div>
         </Container>
       </div>
 
       {/* How to Play Section */}
-      <div style={{ 
-        paddingTop: '4rem',
-        paddingBottom: '4rem'
-      }}>
+      <div 
+        ref={howToPlayAnimation.ref}
+        style={{ 
+          paddingTop: '4rem',
+          paddingBottom: '4rem'
+        }}
+      >
         <Container size="xl">
           <div style={{ 
             maxWidth: '64rem', 
             margin: '0 auto',
             textAlign: 'center'
           }}>
-            <h2 style={{
-              fontSize: '2.5rem',
-              fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
-              fontWeight: 700,
-              color: '#F8F9FA',
-              marginBottom: '1rem'
+            <div style={{
+              opacity: howToPlayAnimation.isVisible ? 1 : 0,
+              transform: howToPlayAnimation.isVisible ? 'translateY(0)' : 'translateY(30px)',
+              transition: 'all 0.8s ease-out'
             }}>
-              How to Play
-            </h2>
-            <p style={{
-              fontSize: '1.125rem',
-              color: '#D1D5DB',
-              marginBottom: '3rem',
-              opacity: 0.9
-            }}>
-              Three simple steps to basketball trivia glory
-            </p>
+              <h2 style={{
+                fontSize: '2.5rem',
+                fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                fontWeight: 700,
+                color: '#F8F9FA',
+                marginBottom: '1rem'
+              }}>
+                How to Play
+              </h2>
+              <p style={{
+                fontSize: '1.125rem',
+                color: '#D1D5DB',
+                marginBottom: '3rem',
+                opacity: 0.9
+              }}>
+                Three simple steps to basketball trivia glory
+              </p>
+            </div>
 
             <div style={{
               display: 'grid',
@@ -220,7 +260,11 @@ export default function Home() {
                 padding: '2rem',
                 backgroundColor: 'rgba(255, 255, 255, 0.02)',
                 borderRadius: '1rem',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                opacity: howToPlayAnimation.isVisible ? 1 : 0,
+                transform: howToPlayAnimation.isVisible ? 'translateY(0)' : 'translateY(40px)',
+                transition: 'all 0.8s ease-out',
+                transitionDelay: howToPlayAnimation.isVisible ? '0.2s' : '0s'
               }}>
                 <div style={{ 
                   fontSize: '2rem', 
@@ -261,7 +305,11 @@ export default function Home() {
                 padding: '2rem',
                 backgroundColor: 'rgba(255, 255, 255, 0.02)',
                 borderRadius: '1rem',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                opacity: howToPlayAnimation.isVisible ? 1 : 0,
+                transform: howToPlayAnimation.isVisible ? 'translateY(0)' : 'translateY(40px)',
+                transition: 'all 0.8s ease-out',
+                transitionDelay: howToPlayAnimation.isVisible ? '0.4s' : '0s'
               }}>
                 <div style={{ 
                   fontSize: '2rem', 
@@ -302,7 +350,11 @@ export default function Home() {
                 padding: '2rem',
                 backgroundColor: 'rgba(255, 255, 255, 0.02)',
                 borderRadius: '1rem',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                opacity: howToPlayAnimation.isVisible ? 1 : 0,
+                transform: howToPlayAnimation.isVisible ? 'translateY(0)' : 'translateY(40px)',
+                transition: 'all 0.8s ease-out',
+                transitionDelay: howToPlayAnimation.isVisible ? '0.6s' : '0s'
               }}>
                 <div style={{ 
                   fontSize: '2rem', 

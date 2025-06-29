@@ -26,12 +26,23 @@
   --foreground: #F8F9FA;
 }
 
+html {
+  background: linear-gradient(135deg, #0B2545 0%, #1a365d 50%, #0B2545 100%);
+  background-attachment: fixed;
+  min-height: 100%;
+  height: 100%;
+}
+
 body {
   background: linear-gradient(135deg, #0B2545 0%, #1a365d 50%, #0B2545 100%);
   background-attachment: fixed;
   color: #F8F9FA;
   font-family: var(--font-inter), Inter, system-ui, sans-serif;
   min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
 
 /* Keyframe Animations */
@@ -63,14 +74,35 @@ body {
   100% { transform: translateY(0); }
 }
 
+/* Prevent overscroll bounce and white space */
+html {
+  overscroll-behavior: none;
+}
+
+body {
+  overscroll-behavior: none;
+}
+
+/* Ensure background covers all areas including overscroll */
+html::before {
+  content: '';
+  position: fixed;
+  top: -100vh;
+  left: -100vw;
+  right: -100vw;
+  bottom: -100vh;
+  background: linear-gradient(135deg, #0B2545 0%, #1a365d 50%, #0B2545 100%);
+  z-index: -2;
+}
+
 /* Arena court texture overlay */
 body::before {
   content: '';
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: -100vh;
+  left: -100vw;
+  right: -100vw;
+  bottom: -100vh;
   background-image: 
     radial-gradient(circle at 25% 25%, rgba(255, 110, 0, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 75% 75%, rgba(0, 193, 118, 0.1) 0%, transparent 50%);

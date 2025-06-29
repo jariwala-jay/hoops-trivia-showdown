@@ -54,7 +54,10 @@ export default function Hero() {
             backgroundColor: 'rgba(255, 110, 0, 0.1)',
             borderRadius: '2rem',
             border: '1px solid rgba(255, 110, 0, 0.3)',
-            marginBottom: '1.5rem'
+            marginBottom: '1.5rem',
+            animation: 'fadeInUp 0.8s ease-out',
+            animationDelay: '0.2s',
+            animationFillMode: 'both'
           }}>
             <span style={{
               fontSize: '0.875rem',
@@ -74,15 +77,29 @@ export default function Hero() {
             color: '#F8F9FA',
             lineHeight: '1.1',
             marginBottom: '1.5rem',
-            textShadow: '0 4px 8px rgba(0,0,0,0.3)'
+            textShadow: '0 4px 8px rgba(0,0,0,0.3)',
+            animation: 'fadeInUp 1s ease-out',
+            animationDelay: '0.3s',
+            animationFillMode: 'both'
           }}>
-            HOOPS TRIVIA
+            <span style={{
+              display: 'inline-block',
+              animation: 'slideInLeft 0.8s ease-out',
+              animationDelay: '0.4s',
+              animationFillMode: 'both'
+            }}>
+              HOOPS TRIVIA
+            </span>
             <br />
             <span style={{
               background: 'linear-gradient(135deg, #FF6E00, #E63946)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text'
+              backgroundClip: 'text',
+              display: 'inline-block',
+              animation: 'slideInRight 0.8s ease-out',
+              animationDelay: '0.8s',
+              animationFillMode: 'both'
             }}>
               SHOWDOWN
             </span>
@@ -93,7 +110,10 @@ export default function Hero() {
             color: '#D1D5DB',
             lineHeight: '1.6',
             marginBottom: '2rem',
-            opacity: 0.9
+            opacity: 0.9,
+            animation: 'fadeInUp 1s ease-out',
+            animationDelay: '0.7s',
+            animationFillMode: 'both'
           }}>
             Stake your NBA TOPSHOT NFTs and battle in the ultimate basketball trivia competition! 
             Test your knowledge, win rewards, and claim victory on the court.
@@ -103,19 +123,34 @@ export default function Hero() {
             display: 'flex',
             flexWrap: 'wrap',
             gap: '1rem',
-            marginBottom: '2rem'
+            marginBottom: '2rem',
+            animation: 'fadeInUp 1s ease-out',
+            animationDelay: '1s',
+            animationFillMode: 'both'
           }}>
-            <ProtectedLink href="/automatch" style={{ textDecoration: 'none' }}>
-              <AnimatedButton variant="primary" size="lg">
-                Quick Match
-              </AnimatedButton>
-            </ProtectedLink>
+            <div style={{
+              animation: 'slideInLeft 0.8s ease-out',
+              animationDelay: '1.4s',
+              animationFillMode: 'both'
+            }}>
+              <ProtectedLink href="/automatch" style={{ textDecoration: 'none' }}>
+                <AnimatedButton variant="primary" size="lg">
+                  Quick Match
+                </AnimatedButton>
+              </ProtectedLink>
+            </div>
             
-            <ProtectedLink href="/create" style={{ textDecoration: 'none' }}>
-              <AnimatedButton variant="secondary" size="lg">
-                Create Match
-              </AnimatedButton>
-            </ProtectedLink>
+            <div style={{
+              animation: 'slideInRight 0.8s ease-out',
+              animationDelay: '1.2s',
+              animationFillMode: 'both'
+            }}>
+              <ProtectedLink href="/create" style={{ textDecoration: 'none' }}>
+                <AnimatedButton variant="secondary" size="lg">
+                  Create Match
+                </AnimatedButton>
+              </ProtectedLink>
+            </div>
           </div>
 
           {/* Value Proposition Cards */}
@@ -134,7 +169,10 @@ export default function Hero() {
           position: 'relative',
           width: '100%',
           maxWidth: '40rem',
-          margin: '0 auto'
+          margin: '0 auto',
+          animation: 'fadeInRight 1.2s ease-out',
+          animationDelay: '0.6s',
+          animationFillMode: 'both'
         }}>
           <div style={{
             position: 'relative',
@@ -216,7 +254,7 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Floating Animation Styles */}
+      {/* Animation Styles */}
       <style jsx>{`
         @keyframes float {
           0%, 100% {
@@ -225,6 +263,55 @@ export default function Hero() {
           50% {
             transform: translateY(-10px);
           }
+        }
+
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes fadeInRight {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes slideInLeft {
+          from {
+            opacity: 0;
+            transform: translateX(-30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes slideInRight {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        /* Add smooth transitions for interactive elements */
+        * {
+          transition: transform 0.2s ease, opacity 0.2s ease;
         }
       `}</style>
     </div>
