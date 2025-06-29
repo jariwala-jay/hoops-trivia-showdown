@@ -7,29 +7,22 @@ import Link from 'next/link';
 import Image from 'next/image';
 import AnimatedButton from '@/components/AnimatedButton';
 
-export function GameFinishedScreen({ match, winner }: { match: Match; winner: Player | null }) {
+export function GameFinishedScreen({ 
+  match, 
+  winner,
+  currentUserId,
+}: { 
+  match: Match; 
+  winner: Player | null,
+  currentUserId: string | null,
+}) {
   const [isTransferring, setIsTransferring] = useState(false);
   const [myTransferStatus, setMyTransferStatus] = useState<string | null>(null);
   const [myTransferError, setMyTransferError] = useState<string | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isLoser, setIsLoser] = useState(false);
 
-  // Get current user ID
-  useEffect(() => {
-    const fetchCurrentUser = async () => {
-      try {
-        const response = await fetch('/auth/profile');
-        if (response.ok) {
-          const userData = await response.json();
-          setCurrentUserId(userData.sub);
-        }
-      } catch (error) {
-        console.error('Error fetching current user:', error);
-      }
-    };
-    fetchCurrentUser();
-  }, []);
-
+  // Get current user ID is now passed via props
+  
   const checkTransferStatus = useCallback(async () => {
     try {
       const response = await fetch(`/api/match/transfer-my-nft?matchId=${match.id}`);
@@ -107,6 +100,15 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
       return () => clearInterval(interval);
     }
   }, [myTransferStatus, checkTransferStatus]);
+
+  const isPlayerB = currentUserId === match.playerB?.id;
+
+  const playerA = isPlayerB ? match.playerB : match.playerA;
+  const playerB = isPlayerB ? match.playerA : match.playerB;
+  const scoreA = isPlayerB ? match.scoreB : match.scoreA;
+  const scoreB = isPlayerB ? match.scoreA : match.scoreB;
+  const nftA = isPlayerB ? match.nftB : match.nftA;
+  const nftB = isPlayerB ? match.nftA : match.nftB;
 
   const renderTransferStatus = () => {
     if (match.winner === 'TIE') {
@@ -483,7 +485,7 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
       {/* Player Results */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
         gap: '2rem',
         marginBottom: '3rem'
       }}>
@@ -492,11 +494,11 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
           backgroundColor: 'rgba(255, 255, 255, 0.02)',
           borderRadius: '1rem',
           padding: '2rem',
-          border: match.winner === 'A' ? '2px solid #FF6E00' : '1px solid rgba(255, 255, 255, 0.1)',
+          border: ((match.winner === 'A' && !isPlayerB) || (match.winner === 'B' && isPlayerB)) ? '2px solid #FF6E00' : '1px solid rgba(255, 255, 255, 0.1)',
           position: 'relative',
           overflow: 'hidden'
         }}>
-          {match.winner === 'A' && (
+          {((match.winner === 'A' && !isPlayerB) || (match.winner === 'B' && isPlayerB)) && (
             <div style={{
               position: 'absolute',
               top: '1rem',
@@ -528,13 +530,15 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
               overflow: 'hidden',
               flexShrink: 0
             }}>
-              <Image
-                src={match.nftA.image}
-                alt={match.nftA.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                width={64}
-                height={80}
-              />
+              {nftA && (
+                <Image
+                  src={nftA.image}
+                  alt={nftA.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  width={64}
+                  height={80}
+                />
+              )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <h3 style={{
@@ -547,7 +551,7 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap'
               }}>
-                {truncateName(match.playerA.name)}
+                {truncateName(playerA?.name)}
               </h3>
               <p style={{
                 color: '#9CA3AF',
@@ -557,7 +561,7 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap'
               }}>
-                {match.nftA.name}
+                {nftA?.name}
               </p>
               <span style={{
                 display: 'inline-block',
@@ -568,7 +572,7 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
                 backgroundColor: 'rgba(156, 163, 175, 0.2)',
                 color: '#9CA3AF'
               }}>
-                {match.nftA.rarity}
+                {nftA?.rarity || 'Common'}
               </span>
             </div>
           </div>
@@ -586,7 +590,7 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
               color: '#FF6E00',
               lineHeight: 1
             }}>
-              {match.scoreA}
+              {scoreA}
             </div>
             <div style={{
               fontSize: '0.875rem',
@@ -605,11 +609,11 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
           backgroundColor: 'rgba(255, 255, 255, 0.02)',
           borderRadius: '1rem',
           padding: '2rem',
-          border: match.winner === 'B' ? '2px solid #00C176' : '1px solid rgba(255, 255, 255, 0.1)',
+          border: ((match.winner === 'A' && isPlayerB) || (match.winner === 'B' && !isPlayerB)) ? '2px solid #00C176' : '1px solid rgba(255, 255, 255, 0.1)',
           position: 'relative',
           overflow: 'hidden'
         }}>
-          {match.winner === 'B' && (
+          {((match.winner === 'A' && isPlayerB) || (match.winner === 'B' && !isPlayerB)) && (
             <div style={{
               position: 'absolute',
               top: '1rem',
@@ -641,13 +645,15 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
               overflow: 'hidden',
               flexShrink: 0
             }}>
-              <Image
-                src={match.nftB!.image}
-                alt={match.nftB!.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                width={64}
-                height={80}
-              />
+              {nftB && (
+                <Image
+                  src={nftB.image}
+                  alt={nftB.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  width={64}
+                  height={80}
+                />
+              )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <h3 style={{
@@ -660,7 +666,7 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap'
               }}>
-                {truncateName(match.playerB?.name)}
+                {truncateName(playerB?.name)}
               </h3>
               <p style={{
                 color: '#9CA3AF',
@@ -670,7 +676,7 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap'
               }}>
-                {match.nftB!.name}
+                {nftB?.name}
               </p>
               <span style={{
                 display: 'inline-block',
@@ -681,7 +687,7 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
                 backgroundColor: 'rgba(156, 163, 175, 0.2)',
                 color: '#9CA3AF'
               }}>
-                {match.nftB!.rarity}
+                {nftB?.rarity || 'Common'}
               </span>
             </div>
           </div>
@@ -699,7 +705,7 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
               color: '#00C176',
               lineHeight: 1
             }}>
-              {match.scoreB}
+              {scoreB}
             </div>
             <div style={{
               fontSize: '0.875rem',
@@ -765,7 +771,7 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
               marginBottom: '0.5rem',
               lineHeight: 1
             }}>
-              {Math.abs(match.scoreA - match.scoreB)}
+              {Math.abs(scoreA - scoreB)}
             </div>
             <div style={{
               fontSize: '0.875rem',
@@ -814,8 +820,8 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
         <AnimatedButton
           onClick={() => {
             const tweetText = match.winner === 'TIE' 
-              ? `Just played an epic NBA trivia showdown that ended in a tie! Final score: ${match.scoreA}-${match.scoreB} #HoopsTrivia #NBATopShot`
-              : `Just ${winner ? 'won' : 'played'} an epic NBA trivia showdown! Final score: ${match.scoreA}-${match.scoreB} ${winner ? `Winner: ${truncateName(winner.name)}` : ''} #HoopsTrivia #NBATopShot`;
+              ? `Just played an epic NBA trivia showdown that ended in a tie! Final score: ${scoreA}-${scoreB} #HoopsTrivia #NBATopShot`
+              : `Just ${winner ? 'won' : 'played'} an epic NBA trivia showdown! Final score: ${scoreA}-${scoreB} ${winner ? `Winner: ${truncateName(winner.name)}` : ''} #HoopsTrivia #NBATopShot`;
             const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
             window.open(tweetUrl, '_blank');
           }}

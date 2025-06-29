@@ -124,9 +124,13 @@ export default function MatchClient({ id }: MatchClientProps) {
     currentUserId: userId,
     id,
     onTimeUp: () => {
+      console.log('onTimeUp called - soundsEnabled:', soundsEnabled);
       if (soundsEnabled) {
         console.log('Playing buzzer sound');
         buzzerSound.play().catch(err => console.warn('Buzzer sound failed:', err));
+      } else {
+        console.log('Sounds not enabled, attempting to play buzzer anyway');
+        buzzerSound.play().catch(err => console.warn('Buzzer sound failed (sounds disabled):', err));
       }
     },
     onAnswerSelect: () => {
@@ -188,7 +192,7 @@ export default function MatchClient({ id }: MatchClientProps) {
     case 'PENDING':
       return <MatchLobby match={match} />;
     case 'READY':
-      return <MatchReady match={match} onStartGame={startGame} />;
+      return <MatchReady match={match} currentUserId={userId} onStartGame={startGame} />;
     case 'INTRO':
       // Only show intro once
       if (!introShown) {
@@ -207,6 +211,7 @@ export default function MatchClient({ id }: MatchClientProps) {
         return (
           <GameInProgress
             match={match}
+            currentUserId={userId}
             currentQuestion={currentQuestion}
             timeLeft={timeLeft}
             hasAnswered={hasAnswered}
@@ -226,7 +231,8 @@ export default function MatchClient({ id }: MatchClientProps) {
       return (
         <GameFinishedScreen 
           match={match} 
-          winner={winner} 
+          winner={winner}
+          currentUserId={userId}
         />
       );
   }

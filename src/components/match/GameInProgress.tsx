@@ -10,6 +10,7 @@ import { truncateName } from '@/lib/utils';
 
 interface GameInProgressProps {
   match: Match;
+  currentUserId: string | null;
   currentQuestion: Question;
   timeLeft: number;
   hasAnswered: boolean;
@@ -22,6 +23,7 @@ interface GameInProgressProps {
 
 export default function GameInProgress({
   match,
+  currentUserId,
   currentQuestion,
   timeLeft,
   hasAnswered,
@@ -31,6 +33,13 @@ export default function GameInProgress({
   waitingForOpponent,
   onTimeUp,
 }: GameInProgressProps) {
+  const isPlayerB = currentUserId === match.playerB?.id;
+
+  const playerA = isPlayerB ? match.playerB : match.playerA;
+  const playerB = isPlayerB ? match.playerA : match.playerB;
+  const scoreA = isPlayerB ? match.scoreB : match.scoreA;
+  const scoreB = isPlayerB ? match.scoreA : match.scoreB;
+
 
   return (
     <>
@@ -60,7 +69,7 @@ export default function GameInProgress({
               color: '#F8F9FA',
               marginBottom: '0.5rem'
             }}>
-              {truncateName(match.playerA.name)}
+              {truncateName(playerA?.name)}
             </h3>
             <div style={{
               fontSize: '2rem',
@@ -68,7 +77,7 @@ export default function GameInProgress({
               fontWeight: 700,
               color: '#FF6E00'
             }}>
-              {match.scoreA}
+              {scoreA}
             </div>
           </div>
           
@@ -106,7 +115,7 @@ export default function GameInProgress({
               color: '#F8F9FA',
               marginBottom: '0.5rem'
             }}>
-              {truncateName(match.playerB?.name)}
+              {truncateName(playerB?.name)}
             </h3>
             <div style={{
               fontSize: '2rem',
@@ -114,7 +123,7 @@ export default function GameInProgress({
               fontWeight: 700,
               color: '#00C176'
             }}>
-              {match.scoreB}
+              {scoreB}
             </div>
           </div>
         </div>
