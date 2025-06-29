@@ -74,11 +74,15 @@ export function LogoIntro({ onComplete, playSound = false }: LogoIntroProps) {
           }
         }
         
-        // Ensure component is still mounted before starting animation
+        // Ensure component is still mounted and controls are ready
         if (!isMounted) return;
         
-        // Start the animation
-        await controls.start('visible');
+        // Start the animation with error handling
+        try {
+          await controls.start('visible');
+        } catch (error) {
+          console.warn('Could not start visible animation:', error);
+        }
         
         // Hold for a moment
         await new Promise((r) => setTimeout(r, 1000));
@@ -86,8 +90,12 @@ export function LogoIntro({ onComplete, playSound = false }: LogoIntroProps) {
         // Ensure component is still mounted before exit animation
         if (!isMounted) return;
         
-        // Exit animation
-        await controls.start('exit');
+        // Exit animation with error handling
+        try {
+          await controls.start('exit');
+        } catch (error) {
+          console.warn('Could not start exit animation:', error);
+        }
         
         // Mark as completed and call the callback
         if (!hasCompletedRef.current && isMounted) {
@@ -105,8 +113,15 @@ export function LogoIntro({ onComplete, playSound = false }: LogoIntroProps) {
       }
     }
     
-    sequence();
-  }, [isMounted]); // Only depend on isMounted
+    // Add a small delay to ensure controls are properly initialized
+    const timeoutId = setTimeout(() => {
+      if (isMounted) {
+        sequence();
+      }
+    }, 50);
+    
+    return () => clearTimeout(timeoutId);
+  }, [isMounted, controls, playSound, playSwish]); // Add controls to dependencies
 
   return (
     <div

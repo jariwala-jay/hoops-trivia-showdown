@@ -13,6 +13,7 @@ import { NFT, Match } from '@/types';
 import Image from 'next/image';
 import { useUserMoments } from '@/hooks/useUserMoments';
 import { truncateName } from '@/lib/utils';
+import SelectedNFTDisplay from '@/components/SelectedNFTDisplay';
 
 export default function JoinMatchPage() {
   const [matchId, setMatchId] = useState('');
@@ -344,90 +345,121 @@ export default function JoinMatchPage() {
 
           {/* NFT Selection */}
           {matchInfo && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <Card>
-                <h2 style={{
-                  fontSize: '1.5rem',
-                  fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
-                  fontWeight: 700,
-                  color: '#F8F9FA',
-                  marginBottom: '1rem'
-                }}>
-                  Select Your NFT to Stake
-                </h2>
-                <p style={{
-                  color: '#D1D5DB',
-                  marginBottom: '1.5rem',
-                  lineHeight: '1.5'
-                }}>
-                  Choose an NFT with <strong>{matchInfo.nftA.rarity}</strong> rarity to match your opponent.
-                </p>
-                
-                <NFTSelector
-                  selectedNFT={selectedNFT}
-                  onSelect={setSelectedNFT}
-                />
-              </Card>
-            </div>
-          )}
-
-          {/* Rarity Error */}
-          {rarityError && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <Card className="bg-red-500/20 border border-red-500/30">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{ color: '#F87171' }}>⚠️</div>
-                  <span style={{ color: '#FECACA' }}>{rarityError}</span>
+            <>
+              {/* Selected NFT and Action Button at Top */}
+              {selectedNFT && !rarityError && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <Card>
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      gap: '1rem'
+                    }}>
+                      <SelectedNFTDisplay 
+                        nft={selectedNFT}
+                        title="Ready to Battle"
+                        compact={true}
+                        customMessage={`Matched with ${matchInfo.nftA.rarity} rarity opponent`}
+                      />
+                      
+                      <div style={{ 
+                        display: 'flex', 
+                        gap: '1rem',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                        paddingTop: '1rem'
+                      }}>
+                        {momentsLoading ? (
+                          <LoadingSpinner size="md" text="Loading..." />
+                        ) : (
+                          <AnimatedButton
+                            onClick={handleJoinMatch}
+                            disabled={!canJoin}
+                            variant="primary"
+                            size="lg"
+                          >
+                            {isJoining ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                <span>Joining Match...</span>
+                              </div>
+                            ) : (
+                              <>Join Battle</>
+                            )}
+                          </AnimatedButton>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
                 </div>
-              </Card>
-            </div>
-          )}
+              )}
 
-          {/* Success Indicator */}
-          {selectedNFT && matchInfo && !rarityError && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <Card className="bg-green-500/20 border border-green-500/30">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{ color: '#10B981' }}>✅</div>
-                  <span style={{ color: '#A7F3D0' }}>Perfect match! Ready to join the battle.</span>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <Card>
+                  <h2 style={{
+                    fontSize: '1.5rem',
+                    fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                    fontWeight: 700,
+                    color: '#F8F9FA',
+                    marginBottom: '1rem'
+                  }}>
+                    {selectedNFT ? 'Choose a Different NFT' : 'Select Your NFT to Stake'}
+                  </h2>
+                  <p style={{
+                    color: '#D1D5DB',
+                    marginBottom: '1.5rem',
+                    lineHeight: '1.5'
+                  }}>
+                    Choose an NFT with <strong>{matchInfo.nftA.rarity}</strong> rarity to match your opponent.
+                  </p>
+                  
+                  <NFTSelector
+                    selectedNFT={selectedNFT}
+                    onSelect={setSelectedNFT}
+                  />
+                </Card>
+              </div>
+
+              {/* Rarity Error */}
+              {rarityError && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <Card className="bg-red-500/20 border border-red-500/30">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ color: '#F87171' }}>⚠️</div>
+                      <span style={{ color: '#FECACA' }}>{rarityError}</span>
+                    </div>
+                  </Card>
                 </div>
-              </Card>
-            </div>
-          )}
+              )}
 
-          {/* Join Button */}
-          <div style={{ textAlign: 'center' }}>
-            {momentsLoading ? (
-              <LoadingSpinner size="lg" text="Loading your Flow address..." />
-            ) : (
-              <AnimatedButton
-                onClick={handleJoinMatch}
-                disabled={!canJoin}
-                variant="primary"
-                size="lg"
-              >
-                {isJoining ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    <span>Joining Match...</span>
+              {/* Initial State - No NFT Selected */}
+              {!selectedNFT && (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{
+                    padding: '2rem',
+                    backgroundColor: 'rgba(255, 110, 0, 0.05)',
+                    borderRadius: '1rem',
+                    border: '2px dashed rgba(255, 110, 0, 0.3)'
+                  }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚔️</div>
+                    <h3 style={{
+                      fontSize: '1.25rem',
+                      fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                      fontWeight: 600,
+                      color: '#F8F9FA',
+                      marginBottom: '0.5rem'
+                    }}>
+                      Ready to Join?
+                    </h3>
+                    <p style={{ color: '#D1D5DB', fontSize: '0.875rem' }}>
+                      Select a <strong>{matchInfo.nftA.rarity}</strong> rarity NFT above to join this battle
+                    </p>
                   </div>
-                ) : (
-                  <>⚔️ Join Battle</>
-                )}
-              </AnimatedButton>
-            )}
-            
-            {!matchId.trim() && (
-              <p style={{ color: '#D1D5DB', marginTop: '1rem', opacity: 0.8 }}>
-                Enter a match ID to get started
-              </p>
-            )}
-            {matchId.trim() && !selectedNFT && matchInfo && (
-              <p style={{ color: '#D1D5DB', marginTop: '1rem', opacity: 0.8 }}>
-                Select an NFT to stake in the arena
-              </p>
-            )}
-          </div>
+                </div>
+              )}
+            </>
+          )}
         </Container>
       </div>
     </>

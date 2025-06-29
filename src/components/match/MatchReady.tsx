@@ -101,7 +101,7 @@ export default function MatchReady({ match, onStartGame }: MatchReadyProps) {
           className="btn btn-primary"
           style={{ fontSize: '1.25rem', padding: '1rem 2rem' }}
         >
-          Start Game! 🏀
+          Start Game!
         </button>
       </div>
     </div>

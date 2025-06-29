@@ -381,10 +381,68 @@ export default function AutomatchPage() {
               </Card>
             </div>
           )}
+         
 
           {/* NFT Selection */}
           {!isSearching && (
             <>
+              {/* Selected NFT and Action Button at Top */}
+              {selectedNFT && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <Card>
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column',
+                      gap: '1rem'
+                    }}>
+                      <SelectedNFTDisplay 
+                        nft={selectedNFT}
+                        title="Ready to Battle"
+                        compact={true}
+                        customMessage={`Matched with ${selectedNFT.rarity} rarity opponents`}
+                      />
+                      
+                      <div style={{ 
+                        display: 'flex', 
+                        gap: '1rem',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                        paddingTop: '1rem'
+                      }}>
+                        {momentsLoading ? (
+                          <LoadingSpinner size="md" text="Loading..." />
+                        ) : (
+                          <AnimatedButton
+                            onClick={startAutomatch}
+                            disabled={!selectedNFT || !flowAddress}
+                            variant="primary"
+                            size="lg"
+                          >
+                            ⚡ Find Quick Match
+                          </AnimatedButton>
+                        )}
+                        
+                      </div>
+                      
+                      {!momentsLoading && !flowAddress && (
+                        <div style={{
+                          textAlign: 'center',
+                          padding: '0.75rem',
+                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                          borderRadius: '0.5rem',
+                          border: '1px solid rgba(239, 68, 68, 0.2)'
+                        }}>
+                          <p style={{ color: '#FECACA', margin: 0, fontSize: '0.875rem' }}>
+                            ⚠️ Flow address not available. Please refresh the page.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                </div>
+              )}
+
               <div style={{ marginBottom: '1.5rem' }}>
                 <Card>
                   <h2 style={{
@@ -394,7 +452,7 @@ export default function AutomatchPage() {
                     color: '#F8F9FA',
                     marginBottom: '1rem'
                   }}>
-                    Select Your NFT to Stake
+                    {selectedNFT ? 'Choose a Different NFT' : 'Select Your NFT to Stake'}
                   </h2>
                   <p style={{
                     color: '#D1D5DB',
@@ -411,44 +469,7 @@ export default function AutomatchPage() {
                 </Card>
               </div>
 
-              {/* Selected NFT Preview */}
-              {selectedNFT && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <Card>
-                    <SelectedNFTDisplay 
-                      nft={selectedNFT}
-                      customMessage={`💡 Real-time Matching: You'll be instantly notified when an opponent with ${selectedNFT.rarity} rarity NFTs joins. No more waiting or refreshing!`}
-                    />
-                  </Card>
-                </div>
-              )}
-
-              {/* Start Button */}
-              <div style={{ textAlign: 'center' }}>
-                {momentsLoading ? (
-                  <LoadingSpinner size="lg" text="Loading your Flow address..." />
-                ) : (
-                  <AnimatedButton
-                    onClick={startAutomatch}
-                    disabled={!selectedNFT || !flowAddress}
-                    variant="primary"
-                    size="lg"
-                  >
-                    ⚡ Find Quick Match
-                  </AnimatedButton>
-                )}
-                
-                {!momentsLoading && !flowAddress && (
-                  <p style={{ color: '#D1D5DB', marginTop: '1rem', opacity: 0.8 }}>
-                    Flow address not available. Please refresh the page.
-                  </p>
-                )}
-                {!selectedNFT && flowAddress && !momentsLoading && (
-                  <p style={{ color: '#D1D5DB', marginTop: '1rem', opacity: 0.8 }}>
-                    Select an NFT to start matchmaking in the arena
-                  </p>
-                )}
-              </div>
+              
             </>
           )}
         </Container>

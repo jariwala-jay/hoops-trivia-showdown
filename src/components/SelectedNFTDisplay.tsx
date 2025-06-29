@@ -9,6 +9,7 @@ interface SelectedNFTDisplayProps {
   showRarityInfo?: boolean;
   customMessage?: string;
   className?: string;
+  compact?: boolean;
 }
 
 export default function SelectedNFTDisplay({ 
@@ -16,7 +17,8 @@ export default function SelectedNFTDisplay({
   title = "Selected NFT",
   showRarityInfo = false,
   customMessage,
-  className = ""
+  className = "",
+  compact = false
 }: SelectedNFTDisplayProps) {
   
   const getRarityStyle = (rarity: string) => {
@@ -38,23 +40,31 @@ export default function SelectedNFTDisplay({
 
   return (
     <div className={className}>
-      <h2 style={{
-        fontSize: '1.5rem',
-        fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
-        fontWeight: 700,
-        color: '#F8F9FA',
-        marginBottom: '1rem'
-      }}>
-        {title}
-      </h2>
+      {!compact && (
+        <h2 style={{
+          fontSize: '1.5rem',
+          fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+          fontWeight: 700,
+          color: '#F8F9FA',
+          marginBottom: '1rem'
+        }}>
+          {title}
+        </h2>
+      )}
       
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: compact ? '0.75rem' : '1rem',
+        flexDirection: compact ? 'row' : 'row'
+      }}>
         <div style={{
-          width: '6rem',
-          height: '8rem',
+          width: compact ? '4rem' : '6rem',
+          height: compact ? '5rem' : '8rem',
           borderRadius: '0.5rem',
           overflow: 'hidden',
-          position: 'relative'
+          position: 'relative',
+          flexShrink: 0
         }}>
           <Image
             src={nft.image}
@@ -65,26 +75,48 @@ export default function SelectedNFTDisplay({
           />
         </div>
         
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {compact && (
+            <h3 style={{
+              fontSize: '1rem',
+              fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+              fontWeight: 600,
+              color: '#F8F9FA',
+              marginBottom: '0.25rem'
+            }}>
+              {title}
+            </h3>
+          )}
+          
           <h3 style={{
-            fontSize: '1.25rem',
+            fontSize: compact ? '1rem' : '1.25rem',
             fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
             fontWeight: 700,
             color: '#F8F9FA',
-            marginBottom: '0.25rem'
+            marginBottom: '0.25rem',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
           }}>
             {nft.name}
           </h3>
           
-          <p style={{ color: '#D1D5DB', marginBottom: '0.5rem' }}>
+          <p style={{ 
+            color: '#D1D5DB', 
+            marginBottom: '0.5rem',
+            fontSize: compact ? '0.875rem' : '1rem',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap'
+          }}>
             {nft.collection}
           </p>
           
           <span style={{
             display: 'inline-block',
-            padding: '0.25rem 0.75rem',
+            padding: compact ? '0.125rem 0.5rem' : '0.25rem 0.75rem',
             borderRadius: '9999px',
-            fontSize: '0.875rem',
+            fontSize: compact ? '0.75rem' : '0.875rem',
             fontWeight: 500,
             ...getRarityStyle(nft.rarity || 'common')
           }}>
@@ -93,7 +125,7 @@ export default function SelectedNFTDisplay({
         </div>
       </div>
       
-      {(showRarityInfo || customMessage) && (
+      {(showRarityInfo || customMessage) && !compact && (
         <div style={{
           marginTop: '1rem',
           padding: '1rem',
