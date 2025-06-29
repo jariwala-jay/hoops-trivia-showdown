@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Match, Question } from '@/types';
 
 interface GameLogicParams {
@@ -23,6 +23,26 @@ export function useGameLogic({
   const [timeLeft, setTimeLeft] = useState<number>(24);
   const [hasAnswered, setHasAnswered] = useState<boolean>(false);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
+  
+  // Timer state management - completely decoupled from match updates
+  const [timerState, setTimerState] = useState<{
+    isRunning: boolean;
+    questionId: string | null;
+    startTime: number | null;
+  }>({
+    isRunning: false,
+    questionId: null,
+    startTime: null,
+  });
+  
+  // Stable refs for timer callbacks
+  const onTimeUpRef = useRef(onTimeUp);
+  const submitAnswerRef = useRef<((answerIndex: number, timeRemaining: number) => Promise<void>) | null>(null);
+  
+  // Update refs when callbacks change
+  useEffect(() => {
+    onTimeUpRef.current = onTimeUp;
+  }, [onTimeUp]);
 
   const submitAnswer = useCallback(async (answerIndex: number, timeRemaining: number) => {
     if (hasAnswered && answerIndex !== -1) return;
@@ -30,9 +50,6 @@ export function useGameLogic({
     setHasAnswered(true);
 
     try {
-      console.log('[ANSWER] Current user ID state:', currentUserId);
-      console.log('[ANSWER] Submitting answer:', { answerIndex, timeRemaining, playerId: currentUserId });
-      
       const response = await fetch('/api/match/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -52,37 +69,68 @@ export function useGameLogic({
       console.error('Error submitting answer:', error);
       setHasAnswered(false);
     }
-  }, [hasAnswered, currentUserId, id, currentQuestion]);
+  }, [hasAnswered, currentUserId, id, currentQuestion?.id]);
 
-  // Timer for current question
+  // Update submit answer ref
   useEffect(() => {
-    if (match?.status === 'IN_PROGRESS' && currentQuestion && !hasAnswered) {
-      setTimeLeft(24);
-      const timer = setInterval(() => {
-        setTimeLeft((prev) => {
-          const newTime = prev - 1;
-          
-          if (newTime <= 0) {
-            onTimeUp();
-            submitAnswer(-1, 0);
-            return 0;
-          }
-          
-          return newTime;
-        });
-      }, 1000);
+    submitAnswerRef.current = submitAnswer;
+  }, [submitAnswer]);
 
-      return () => clearInterval(timer);
+  // Timer effect - completely independent of match state
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
+    if (timerState.isRunning && timerState.startTime) {
+      intervalId = setInterval(() => {
+        const elapsed = Date.now() - timerState.startTime!;
+        const remaining = Math.max(0, 24 - Math.floor(elapsed / 1000));
+        
+        setTimeLeft(remaining);
+        
+        if (remaining <= 0) {
+          setTimerState(prev => ({ ...prev, isRunning: false }));
+          onTimeUpRef.current();
+          submitAnswerRef.current?.(-1, 0);
+        }
+      }, 1000);
     }
-  }, [match?.currentQuestionIndex, hasAnswered, match?.status, currentQuestion, onTimeUp, submitAnswer]);
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [timerState.isRunning, timerState.startTime, timerState.questionId]);
+
+  // Question change detection - start timer for new questions
+  useEffect(() => {
+    if (match?.status === 'IN_PROGRESS' && 
+        currentQuestion && 
+        !hasAnswered && 
+        currentQuestion.id !== timerState.questionId) {
+      
+      setTimeLeft(24);
+      setTimerState({
+        isRunning: true,
+        questionId: currentQuestion.id,
+        startTime: Date.now(),
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match?.status, currentQuestion?.id, hasAnswered, timerState.questionId]);
+
+  // Stop timer when answered
+  useEffect(() => {
+    if (hasAnswered && timerState.isRunning) {
+      setTimerState(prev => ({ ...prev, isRunning: false }));
+    }
+  }, [hasAnswered, timerState.isRunning]);
 
   // Reset answer state when question changes
   useEffect(() => {
     if (match?.currentQuestionIndex !== undefined) {
-      console.log(`[QUESTION] Question changed to index ${match.currentQuestionIndex}`);
       setSelectedAnswer(null);
       setHasAnswered(false);
-      setTimeLeft(24);
       setShowFeedback(false);
     }
   }, [match?.currentQuestionIndex]);

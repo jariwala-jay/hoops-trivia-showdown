@@ -66,11 +66,6 @@ export async function generateTriviaQuestions(
       throw new Error('OpenAI returned an empty response.');
     }
 
-    // For debugging: log the raw response from the AI
-    console.log("--- Raw OpenAI Response ---");
-    console.log(content);
-    console.log("---------------------------");
-
     const parsedJson = JSON.parse(content);
     
     // We now expect a specific structure: { questions: [...] }

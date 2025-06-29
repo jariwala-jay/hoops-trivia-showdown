@@ -15,13 +15,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { matchId, nft, flowAddress } = body; // Now expecting the full NFT object and Flow address
 
-    console.log('=== MATCH JOIN DEBUG ===');
-    console.log('Full request body:', JSON.stringify(body, null, 2));
-    console.log('Received NFT data for match join:', JSON.stringify(nft, null, 2));
-    console.log('Received Flow address for Player B:', flowAddress);
-    console.log('Flow address type:', typeof flowAddress);
-    console.log('Flow address length:', flowAddress?.length);
-
     if (!matchId || !nft || !nft.id) {
       return NextResponse.json({ 
         error: 'Match ID and NFT data are required' 
@@ -66,8 +59,6 @@ export async function POST(request: NextRequest) {
       dappID: nft.dapp?.id || 'ad3260ba-a87c-4359-a8b0-def2cc36310b', // Fallback to NBA Top Shot dappID
       serialNumber: nft.serialNumber ? parseInt(nft.serialNumber) : undefined
     };
-
-    console.log('Converted NFT data for storage:', JSON.stringify(nftData, null, 2));
 
     // Validate that NFT rarities match
     if (match.nftA.rarity !== nftData.rarity) {

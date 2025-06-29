@@ -16,7 +16,7 @@ try {
   const kvModule = require('@vercel/kv');
   kv = kvModule.kv;
 } catch {
-  console.log('KV not available, using in-memory fallback');
+  console.warn('KV not available, using in-memory fallback');
 }
 
 // Redis-based persistent storage for multiplayer support
@@ -156,7 +156,6 @@ const kvDB = {
       return match;
     } catch (error) {
       console.error('Error creating match:', error);
-      console.log('Falling back to in-memory storage');
       return fallbackDB.createMatch(match);
     }
   },
@@ -274,9 +273,7 @@ const kvDB = {
     try {
       if (!kv) return 0;
       const key = `${QUESTIONS_PREFIX}${difficulty.toLowerCase()}`;
-      console.log(`Attempting to delete key: ${key}`);
       const result = await kv.del(key);
-      console.log(`Successfully deleted key: ${key}, result: ${result}`);
       return result;
     } catch (error) {
       console.error(`Error clearing questions for difficulty ${difficulty}:`, error);

@@ -12,7 +12,7 @@ try {
   const kvModule = require('@vercel/kv');
   kv = kvModule.kv;
 } catch {
-  console.log('KV not available for cleanup');
+  console.warn('KV not available for cleanup');
 }
 
 export async function POST() {
@@ -39,7 +39,6 @@ export async function POST() {
         const deleted = await kv.del(queueKey);
         if (deleted > 0) {
           totalCleaned += deleted;
-          console.log(`Cleared ${deleted} entries from ${rarity} queue`);
         }
       } catch (error) {
         console.error(`Error cleaning ${rarity} queue:`, error);

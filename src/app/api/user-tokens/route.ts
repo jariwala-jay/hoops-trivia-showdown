@@ -27,7 +27,6 @@ export async function GET(request: NextRequest) {
         accessTokenData = await tokenResponse.json();
       } else {
         const errorData = await tokenResponse.json().catch(() => null);
-        console.log('[USER_TOKENS] Access token fetch failed:', tokenResponse.status, errorData);
         
         // Check if this is a token expiration error
         if (errorData?.requiresLogin) {
@@ -114,7 +113,7 @@ export async function GET(request: NextRequest) {
         );
         
         if (authError) {
-          console.log('Authentication error detected, falling back to mock data');
+          console.warn('Authentication error detected, falling back to mock data');
           return NextResponse.json({
             data: {
               getTokens: {

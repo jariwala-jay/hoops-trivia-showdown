@@ -25,8 +25,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No access token available' }, { status: 401 });
     }
 
-    console.log('Testing NFT withdrawal with hardcoded data...');
-
     // Test data - using your actual Flow address as source since you own the NFT
     const testData = {
       tokenID: "11020763", // Use the actual token ID from your NFT
@@ -35,8 +33,6 @@ export async function POST(request: NextRequest) {
       dappID: "ad3260ba-a87c-4359-a8b0-def2cc36310b", // NBA Top Shot dapp ID
       contract: "A.877931736ee77cff.TopShot" // NBA Top Shot contract
     };
-
-    console.log('Test withdrawal data:', testData);
 
     // Make the withdrawal API call
     const withdrawalApiResponse = await fetch('https://staging.accounts.meetdapper.com/graphql', {
@@ -84,7 +80,6 @@ export async function POST(request: NextRequest) {
     }
 
     const withdrawalData = await withdrawalApiResponse.json();
-    console.log('Withdrawal API response:', JSON.stringify(withdrawalData, null, 2));
 
     if (withdrawalData.errors) {
       console.error('Withdrawal GraphQL errors:', withdrawalData.errors);
@@ -189,7 +184,6 @@ export async function GET(request: NextRequest) {
     }
 
     const statusData = await statusResponse.json();
-    console.log('Withdrawal status response:', JSON.stringify(statusData, null, 2));
 
     return NextResponse.json({
       success: true,
@@ -278,8 +272,7 @@ export async function PUT(request: NextRequest) {
       }, { status: 500 });
     }
 
-    const tokensData = await tokensResponse.json();
-    console.log('User tokens response:', JSON.stringify(tokensData, null, 2));
+    const tokensData = await tokensResponse.json(); 
 
     return NextResponse.json({
       success: true,

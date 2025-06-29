@@ -15,13 +15,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { nft, flowAddress } = body; // Now expecting the full NFT object and Flow address
 
-    console.log('=== MATCH CREATE DEBUG ===');
-    console.log('Full request body:', JSON.stringify(body, null, 2));
-    console.log('Received NFT data for match creation:', JSON.stringify(nft, null, 2));
-    console.log('Received Flow address for Player A:', flowAddress);
-    console.log('Flow address type:', typeof flowAddress);
-    console.log('Flow address length:', flowAddress?.length);
-
     if (!nft || !nft.id || !nft.name || !nft.image || !nft.rarity || !nft.collection) {
       return NextResponse.json({ error: 'A complete NFT object is required to create a match.' }, { status: 400 });
     }
@@ -47,8 +40,6 @@ export async function POST(request: NextRequest) {
       dappID: nft.dapp?.id || 'ad3260ba-a87c-4359-a8b0-def2cc36310b', // Fallback to NBA Top Shot dappID
       serialNumber: nft.serialNumber ? parseInt(nft.serialNumber) : undefined
     };
-
-    console.log('Converted NFT data for storage:', JSON.stringify(nftData, null, 2));
 
     const questions = await db.getRandomQuestions(5, 'medium');
     if (questions.length < 5) {

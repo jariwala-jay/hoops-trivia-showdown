@@ -40,7 +40,6 @@ export async function POST(request: NextRequest) {
         await db.updateMatch(matchId, {
           status: 'IN_PROGRESS' as const
         });
-        console.log(`Match ${matchId} transitioned from INTRO to IN_PROGRESS`);
       } catch (error) {
         console.error(`Failed to transition match ${matchId} to IN_PROGRESS:`, error);
       }

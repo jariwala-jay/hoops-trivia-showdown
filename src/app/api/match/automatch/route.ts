@@ -15,10 +15,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { nft, action, flowAddress } = body;
 
-    console.log('=== AUTOMATCH DEBUG ===');
-    console.log('Full request body:', JSON.stringify(body, null, 2));
-    console.log('Received Flow address:', flowAddress);
-
     if (!nft || !nft.id) {
       return NextResponse.json({ error: 'NFT data is required' }, { status: 400 });
     }
@@ -34,8 +30,6 @@ export async function POST(request: NextRequest) {
     const userId = session.user.sub || session.user.email || 'unknown';
     const userName = session.user.name || session.user.email || 'Player';
     const userAvatar = session.user.picture;
-
-    console.log(`[AUTOMATCH] User ${userId} (${userName}) action: ${action}, rarity: ${nft.rarity}`);
 
     // Convert the real Dapper moment to our NFT format
     const nftData: NFT = {
@@ -58,7 +52,6 @@ export async function POST(request: NextRequest) {
 
     // Action is 'join' - try to find an opponent first
     const opponent = await db.findAutomatchOpponent(userId, nftData.rarity || 'Common');
-    console.log(`[AUTOMATCH] User ${userId} looking for opponent in ${nftData.rarity} queue. Found:`, opponent ? opponent.userName : 'none');
 
     if (opponent) {
       // Found an opponent! Create a match immediately
@@ -120,9 +113,6 @@ export async function POST(request: NextRequest) {
         }
       });
     } else {
-      // No opponent found, check if user is already in queue by trying to remove them first
-      const wasInQueue = await db.removeFromAutomatchQueue(userId, nftData.rarity || 'Common');
-      
       // Add user to queue (this will be a fresh entry even if they were already there)
       const queueEntry: AutomatchEntry = {
         userId,
@@ -144,7 +134,6 @@ export async function POST(request: NextRequest) {
 
       // Get current queue size for this rarity
       const queueSize = await db.getAutomatchQueueSize(nftData.rarity || 'Common');
-      console.log(`[AUTOMATCH] User ${userId} ${wasInQueue ? 'updated in' : 'added to'} queue. Queue size now: ${queueSize}`);
 
       return NextResponse.json({
         status: 'queued',

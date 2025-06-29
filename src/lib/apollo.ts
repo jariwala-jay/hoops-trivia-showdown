@@ -25,7 +25,6 @@ const authLink = setContext(async (_, { headers }) => {
         try {
           const errorData = await response.json();
           if (errorData.requiresLogin) {
-            console.log('[APOLLO] Token expired, user needs to re-authenticate');
             // Don't redirect here as Apollo might retry - let the component handle it
             return { headers };
           }

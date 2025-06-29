@@ -7,10 +7,18 @@ import Image from 'next/image';
 
 interface MatchReadyProps {
   match: Match;
+  currentUserId: string | null;
   onStartGame: () => void;
 }
 
-export default function MatchReady({ match, onStartGame }: MatchReadyProps) {
+export default function MatchReady({ match, currentUserId, onStartGame }: MatchReadyProps) {
+  const isPlayerB = currentUserId === match.playerB?.id;
+
+  const playerA = isPlayerB ? match.playerB : match.playerA;
+  const playerB = isPlayerB ? match.playerA : match.playerB;
+  const nftA = isPlayerB ? match.nftB : match.nftA;
+  const nftB = isPlayerB ? match.nftA : match.nftB;
+
   return (
     <div style={{ minHeight: '100vh' }}>
       <Navbar />
@@ -39,35 +47,7 @@ export default function MatchReady({ match, onStartGame }: MatchReadyProps) {
           gap: '2rem',
           marginBottom: '2rem'
         }}>
-          <div className="card">
-            <h2 style={{
-              fontSize: '1.5rem',
-              fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
-              fontWeight: 700,
-              color: '#F8F9FA',
-              marginBottom: '1rem'
-            }}>
-              {truncateName(match.playerA.name)}
-            </h2>
-            <div style={{
-              width: '8rem',
-              height: '10rem',
-              margin: '0 auto 1rem auto',
-              borderRadius: '0.5rem',
-              overflow: 'hidden'
-            }}>
-              <Image
-                src={match.nftA.image}
-                alt={match.nftA.name}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                width={100}
-                height={100}
-              />
-            </div>
-            <p style={{ color: '#D1D5DB' }}>{match.nftA.name}</p>
-          </div>
-
-          {match.playerB && (
+          {nftA && (
             <div className="card">
               <h2 style={{
                 fontSize: '1.5rem',
@@ -76,7 +56,7 @@ export default function MatchReady({ match, onStartGame }: MatchReadyProps) {
                 color: '#F8F9FA',
                 marginBottom: '1rem'
               }}>
-                {truncateName(match.playerB.name)}
+                {truncateName(playerA?.name)}
               </h2>
               <div style={{
                 width: '8rem',
@@ -86,14 +66,44 @@ export default function MatchReady({ match, onStartGame }: MatchReadyProps) {
                 overflow: 'hidden'
               }}>
                 <Image
-                  src={match.nftB!.image}
-                  alt={match.nftB!.name}
+                  src={nftA.image}
+                  alt={nftA.name}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   width={100}
                   height={100}
                 />
               </div>
-              <p style={{ color: '#D1D5DB' }}>{match.nftB!.name}</p>
+              <p style={{ color: '#D1D5DB' }}>{nftA.name}</p>
+            </div>
+          )}
+
+          {playerB && nftB && (
+            <div className="card">
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
+                fontWeight: 700,
+                color: '#F8F9FA',
+                marginBottom: '1rem'
+              }}>
+                {truncateName(playerB.name)}
+              </h2>
+              <div style={{
+                width: '8rem',
+                height: '10rem',
+                margin: '0 auto 1rem auto',
+                borderRadius: '0.5rem',
+                overflow: 'hidden'
+              }}>
+                <Image
+                  src={nftB.image}
+                  alt={nftB.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  width={100}
+                  height={100}
+                />
+              </div>
+              <p style={{ color: '#D1D5DB' }}>{nftB.name}</p>
             </div>
           )}
         </div>

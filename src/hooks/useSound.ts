@@ -72,7 +72,6 @@ export const useSound = (
 
     // Debounce rapid plays only if debounceMs > 0
     if (debounceMs > 0 && now - lastPlayedRef.current < debounceMs) {
-      console.log('Audio play debounced for', src);
       return Promise.resolve();
     }
 
@@ -89,7 +88,6 @@ export const useSound = (
       
       // Play the audio
       await audio.play();
-      console.log('Audio played successfully:', src);
     } catch (error) {
       console.warn('Audio play failed for', src, ':', error);
       // Don't throw, just log the error

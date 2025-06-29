@@ -28,9 +28,6 @@ export default function AutomatchPage() {
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
-  console.log('Automatch page - Flow address:', flowAddress);
-  console.log('Automatch page - Moments loading:', momentsLoading);
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -65,8 +62,6 @@ export default function AutomatchPage() {
   const startAutomatch = async () => {
     if (!selectedNFT) return;
 
-    console.log('Starting automatch with Flow address:', flowAddress);
-
     if (!flowAddress) {
       setError('Flow address not available. Please try again.');
       return;
@@ -93,14 +88,12 @@ export default function AutomatchPage() {
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {
-        console.log('[SSE] Connected to automatch service');
         setConnectionStatus('connected');
       };
 
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('[SSE] Received:', data);
 
           switch (data.type) {
             case 'connected':
@@ -143,7 +136,7 @@ export default function AutomatchPage() {
               break;
 
             default:
-              console.log('[SSE] Unknown message type:', data.type);
+              console.warn('[SSE] Unknown message type:', data.type);
           }
         } catch (err) {
           console.error('[SSE] Error parsing message:', err);
@@ -151,7 +144,7 @@ export default function AutomatchPage() {
       };
 
       eventSource.onerror = (event) => {
-        console.log('[SSE] Connection closed or error:', event);
+        console.warn('[SSE] Connection closed or error:', event);
         
         // Only show error if we're still actively searching
         if (isSearching && !matchFound) {

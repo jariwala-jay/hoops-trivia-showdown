@@ -73,15 +73,10 @@ export class NFTTransferService {
     error?: string;
   }> {
     try {
-      console.log(`Starting NFT transfer process for match ${match.id}, winner: ${match.winner}`);
-      console.log(`Authenticated user: ${this.authenticatedUserId}`);
-      
       // Determine what transfers need to happen
       const transferPlan = this.createTransferPlan(match);
-      console.log(`Transfer plan created: ${transferPlan.length} transfers needed`);
       
       if (transferPlan.length === 0) {
-        console.log('No transfers needed - returning success');
         return { success: true, operations: [] };
       }
 
@@ -90,17 +85,10 @@ export class NFTTransferService {
         const fromPlayerId = plan.fromPlayer === 'A' ? match.playerA.id : match.playerB?.id;
         const canExecute = fromPlayerId === this.authenticatedUserId;
         
-        if (!canExecute) {
-          console.log(`Skipping transfer from ${plan.fromPlayer} - not authenticated as owner (${fromPlayerId})`);
-        } else {
-          console.log(`Will execute transfer from ${plan.fromPlayer} - authenticated as owner (${fromPlayerId})`);
-        }
-        
         return canExecute;
       });
 
       if (authenticatedUserTransfers.length === 0) {
-        console.log('No transfers can be executed by authenticated user');
         return { 
           success: true, 
           operations: [],
@@ -109,27 +97,20 @@ export class NFTTransferService {
       }
 
       // Get Flow addresses for all players
-      console.log('Getting Flow addresses for players...');
       const playersWithAddresses = await this.getPlayersFlowAddresses(match);
-      console.log(`Flow addresses obtained - PlayerA: ${playersWithAddresses.playerA.flowAddress}, PlayerB: ${playersWithAddresses.playerB?.flowAddress}`);
       
       // Execute only the transfers that the authenticated user can perform
       const operations: NFTTransferOperation[] = [];
       
       for (const plan of authenticatedUserTransfers) {
-        console.log(`Executing transfer: ${plan.nft.name} from ${plan.fromPlayer} to ${plan.toPlayer}`);
         const operation = await this.executeTransfer(plan, playersWithAddresses, match);
         operations.push(operation);
-        console.log(`Transfer operation completed with status: ${operation.status}`);
       }
 
       // Check if all transfers were initiated successfully (COMPLETED or IN_PROGRESS are both success)
       const allSuccessful = operations.every(op => 
         op.status === 'COMPLETED' || op.status === 'IN_PROGRESS'
       );
-      
-      console.log(`All authenticated user transfers completed. Success: ${allSuccessful}`);
-      console.log('Transfer statuses:', operations.map(op => `${op.nftId}: ${op.status}`));
       
       return {
         success: allSuccessful,
@@ -187,7 +168,6 @@ export class NFTTransferService {
         
       case 'TIE':
         // No transfers on tie - each player keeps their NFT
-        console.log('Match ended in tie - no NFT transfers needed');
         break;
     }
 
@@ -201,9 +181,6 @@ export class NFTTransferService {
     playerA: PlayerWithFlowAddress;
     playerB?: PlayerWithFlowAddress;
   }> {
-    console.log('Match PlayerA stored flow address:', match.playerA.flowAddress);
-    console.log('Match PlayerB stored flow address:', match.playerB?.flowAddress);
-    
     // Validate that Flow addresses are available
     if (!match.playerA.flowAddress) {
       throw new Error('Player A Flow address is not available');
@@ -222,8 +199,6 @@ export class NFTTransferService {
       playerA: { ...match.playerA, flowAddress: match.playerA.flowAddress },
       playerB: match.playerB ? { ...match.playerB, flowAddress: match.playerB.flowAddress } : undefined
     };
-
-    console.log('Using stored Flow addresses - PlayerA:', players.playerA.flowAddress, 'PlayerB:', players.playerB?.flowAddress);
 
     return players;
   }
@@ -317,10 +292,7 @@ export class NFTTransferService {
       
       // Use fallback dappID for NBA Top Shot
       transferPlan.nft.dappID = 'ad3260ba-a87c-4359-a8b0-def2cc36310b';
-      console.log('Applied fallback dappID:', transferPlan.nft.dappID);
     }
-
-    console.log(`Starting transfer for NFT ${transferPlan.nft.id} (Token ID: ${operation.nftTokenId}) from ${operation.fromAddress} to ${operation.toAddress}`);
 
     // Execute transfer with retries
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
@@ -328,7 +300,6 @@ export class NFTTransferService {
       operation.updatedAt = new Date().toISOString();
 
       try {
-        console.log(`Transfer attempt ${attempt}/${this.maxRetries} for NFT ${transferPlan.nft.id} (Token ID: ${operation.nftTokenId})`);
         
         operation.status = 'IN_PROGRESS';
         
@@ -338,8 +309,6 @@ export class NFTTransferService {
           dappID: transferPlan.nft.dappID!,
           contractQualifiedName: "A.877931736ee77cff.TopShot"
         };
-
-        console.log('Withdraw input:', JSON.stringify(withdrawInput, null, 2));
 
         // Use the working GraphQL mutation from our test
         const result = await this.client.mutate<{ withdrawNFT: WithdrawNftResponse }>(`
@@ -379,7 +348,6 @@ export class NFTTransferService {
           const withdrawal = result.withdrawNFT.withdrawal as unknown as Record<string, unknown>;
           operation.transactionHash = (withdrawal.txnHash as string) || undefined;
           
-          console.log(`NFT transfer initiated successfully: ${operation.withdrawalId}, state: ${withdrawalState}`);
           break;
         } else {
           throw new Error('No withdrawal response received');
@@ -497,7 +465,6 @@ export async function createNFTTransferService(serverSideContext?: {
     authenticatedUserId
   };
 
-  console.log(`Creating NFT transfer service for user: ${authenticatedUserId}`);
   return new NFTTransferService(context);
 }
 

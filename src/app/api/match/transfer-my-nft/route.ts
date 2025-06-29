@@ -77,8 +77,6 @@ export async function POST(request: NextRequest) {
       [attemptKey]: ((match[attemptKey] as number) || 0) + 1
     });
 
-    console.log(`Starting NFT transfer for match ${matchId}, user ${session.user.sub} (Player ${userPlayer})`);
-
     // Execute the transfers with the authenticated user's context
     const transferResult = await handleMatchFinishTransfers(match, {
       authenticatedUserId: session.user.sub,
