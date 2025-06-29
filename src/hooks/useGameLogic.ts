@@ -9,7 +9,6 @@ interface GameLogicParams {
   id: string;
   onTimeUp: () => void;
   onAnswerSelect: () => void;
-  onBeep: () => void;
 }
 
 export function useGameLogic({
@@ -75,7 +74,7 @@ export function useGameLogic({
 
       return () => clearInterval(timer);
     }
-  }, [match?.currentQuestionIndex, hasAnswered, match?.status]);
+  }, [match?.currentQuestionIndex, hasAnswered, match?.status, currentQuestion, onTimeUp, submitAnswer]);
 
   // Reset answer state when question changes
   useEffect(() => {

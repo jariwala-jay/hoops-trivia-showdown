@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@auth0/nextjs-auth0';
 import { NFT } from '@/types';
 
@@ -32,7 +32,7 @@ export function useUserMoments(): UseUserMomentsReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     if (!user || userLoading) return;
 
     setIsLoading(true);
@@ -104,7 +104,7 @@ export function useUserMoments(): UseUserMomentsReturn {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, userLoading]);
 
   useEffect(() => {
     fetchUserData();
@@ -117,7 +117,7 @@ export function useUserMoments(): UseUserMomentsReturn {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [user, userLoading]);
+  }, [user, userLoading, fetchUserData]);
 
   return {
     moments,

@@ -2,7 +2,7 @@
 
 import { Match, Player } from '@/types';
 import { truncateName } from '@/lib/utils';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import AnimatedButton from '@/components/AnimatedButton';
@@ -30,42 +30,7 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
     fetchCurrentUser();
   }, []);
 
-  // Determine user's role (loser/winner) and set transfer status from match data
-  useEffect(() => {
-    if (match.winner !== 'TIE' && currentUserId) {
-      const isPlayerA = match.playerA.id === currentUserId;
-      const userIsLoser = (isPlayerA && match.winner === 'B') || (!isPlayerA && match.winner === 'A');
-      setIsLoser(userIsLoser);
-      
-      const playerLetter = isPlayerA ? 'A' : 'B';
-      const statusKey = `nftTransfer${playerLetter}Status` as keyof typeof match;
-      const errorKey = `nftTransfer${playerLetter}Error` as keyof typeof match;
-      
-      setMyTransferStatus((match[statusKey] as string) || 'PENDING');
-      setMyTransferError((match[errorKey] as string) || null);
-    }
-  }, [match, currentUserId]);
-
-  // Automatically trigger the transfer for the loser
-  useEffect(() => {
-    if (isLoser && myTransferStatus === 'PENDING' && !isTransferring) {
-      console.log('[AUTO-TRANSFER] User is the loser, automatically initiating transfer...');
-      handleTransferClick();
-    }
-  }, [isLoser, myTransferStatus, isTransferring]);
-
-  // Periodically check for transfer completion when IN_PROGRESS
-  useEffect(() => {
-    if (myTransferStatus === 'IN_PROGRESS') {
-      const interval = setInterval(() => {
-        checkTransferStatus();
-      }, 30000); // Check every 30 seconds
-
-      return () => clearInterval(interval);
-    }
-  }, [myTransferStatus]);
-
-  const checkTransferStatus = async () => {
+  const checkTransferStatus = useCallback(async () => {
     try {
       const response = await fetch(`/api/match/transfer-my-nft?matchId=${match.id}`);
       if (response.ok) {
@@ -76,9 +41,9 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
     } catch (error) {
       console.error('Error checking transfer status:', error);
     }
-  };
+  }, [match.id]);
 
-  const handleTransferClick = async () => {
+  const handleTransferClick = useCallback(async () => {
     setIsTransferring(true);
     setMyTransferError(null);
 
@@ -106,7 +71,42 @@ export function GameFinishedScreen({ match, winner }: { match: Match; winner: Pl
     } finally {
       setIsTransferring(false);
     }
-  };
+  }, [match.id]);
+
+  // Determine user's role (loser/winner) and set transfer status from match data
+  useEffect(() => {
+    if (match.winner !== 'TIE' && currentUserId) {
+      const isPlayerA = match.playerA.id === currentUserId;
+      const userIsLoser = (isPlayerA && match.winner === 'B') || (!isPlayerA && match.winner === 'A');
+      setIsLoser(userIsLoser);
+      
+      const playerLetter = isPlayerA ? 'A' : 'B';
+      const statusKey = `nftTransfer${playerLetter}Status` as keyof typeof match;
+      const errorKey = `nftTransfer${playerLetter}Error` as keyof typeof match;
+      
+      setMyTransferStatus((match[statusKey] as string) || 'PENDING');
+      setMyTransferError((match[errorKey] as string) || null);
+    }
+  }, [match, currentUserId]);
+
+  // Automatically trigger the transfer for the loser
+  useEffect(() => {
+    if (isLoser && myTransferStatus === 'PENDING' && !isTransferring) {
+      console.log('[AUTO-TRANSFER] User is the loser, automatically initiating transfer...');
+      handleTransferClick();
+    }
+  }, [isLoser, myTransferStatus, isTransferring, handleTransferClick]);
+
+  // Periodically check for transfer completion when IN_PROGRESS
+  useEffect(() => {
+    if (myTransferStatus === 'IN_PROGRESS') {
+      const interval = setInterval(() => {
+        checkTransferStatus();
+      }, 30000); // Check every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [myTransferStatus, checkTransferStatus]);
 
   const renderTransferStatus = () => {
     if (match.winner === 'TIE') {

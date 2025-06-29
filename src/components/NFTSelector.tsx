@@ -11,12 +11,11 @@ interface NFTSelectorProps {
   selectedNFT: NFT | null;
   onSelect: (nft: NFT) => void;
   className?: string;
-  compact?: boolean;
 }
 
 const ITEMS_PER_PAGE = 8; // 2x4 grid
 
-export default function NFTSelector({ selectedNFT, onSelect, className = '', compact = false }: NFTSelectorProps) {
+export default function NFTSelector({ selectedNFT, onSelect, className = '' }: NFTSelectorProps) {
   const [filter, setFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(0);
   const { moments, isLoading, error } = useUserMoments();

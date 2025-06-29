@@ -99,7 +99,7 @@ export default function MatchClient({ id }: MatchClientProps) {
         }, 500);
       }
     }
-  }, [match?.status, soundsEnabled, currentUserId, cheerSound]);
+  }, [match?.status, soundsEnabled, currentUserId, cheerSound, match?.playerA.id, match?.playerB?.id, match?.winner]);
 
   // Reset cheer played flag when match changes or restarts
   useEffect(() => {

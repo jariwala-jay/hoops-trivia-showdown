@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import NFTSelector from '@/components/NFTSelector';
@@ -15,7 +15,7 @@ import { useUserMoments } from '@/hooks/useUserMoments';
 import { truncateName } from '@/lib/utils';
 import SelectedNFTDisplay from '@/components/SelectedNFTDisplay';
 
-export default function JoinMatchPage() {
+function JoinMatchContent() {
   const [matchId, setMatchId] = useState('');
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
   const [isJoining, setIsJoining] = useState(false);
@@ -433,35 +433,29 @@ export default function JoinMatchPage() {
                 </div>
               )}
 
-              {/* Initial State - No NFT Selected */}
-              {!selectedNFT && (
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{
-                    padding: '2rem',
-                    backgroundColor: 'rgba(255, 110, 0, 0.05)',
-                    borderRadius: '1rem',
-                    border: '2px dashed rgba(255, 110, 0, 0.3)'
-                  }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚔️</div>
-                    <h3 style={{
-                      fontSize: '1.25rem',
-                      fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
-                      fontWeight: 600,
-                      color: '#F8F9FA',
-                      marginBottom: '0.5rem'
-                    }}>
-                      Ready to Join?
-                    </h3>
-                    <p style={{ color: '#D1D5DB', fontSize: '0.875rem' }}>
-                      Select a <strong>{matchInfo.nftA.rarity}</strong> rarity NFT above to join this battle
-                    </p>
-                  </div>
-                </div>
-              )}
+           
             </>
           )}
         </Container>
       </div>
     </>
+  );
+}
+
+export default function JoinMatchPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ 
+        minHeight: '100vh',
+        paddingTop: '4rem',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <LoadingSpinner size="lg" text="Loading..." />
+      </div>
+    }>
+      <JoinMatchContent />
+    </Suspense>
   );
 } 

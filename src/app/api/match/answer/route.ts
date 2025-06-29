@@ -154,9 +154,9 @@ export async function POST(request: NextRequest) {
           status: 'FINISHED',
           winner,
           finishedAt: new Date().toISOString(),
-          // Set initial transfer statuses to PENDING for winner/loser
-          nftTransferAStatus: winner === 'B' ? 'PENDING' : 'NOT_REQUIRED',
-          nftTransferBStatus: winner === 'A' ? 'PENDING' : 'NOT_REQUIRED'
+          // Set initial transfer statuses to PENDING for loser, undefined for winner/tie
+          nftTransferAStatus: winner === 'B' ? 'PENDING' : undefined,
+          nftTransferBStatus: winner === 'A' ? 'PENDING' : undefined
         });
 
         // REMOVED: Automatic NFT transfer trigger. This must be initiated by the losing player from the client.

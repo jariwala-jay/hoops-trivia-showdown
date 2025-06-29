@@ -157,7 +157,8 @@ export function useMatchState(id: string, { onMatchFinished }: { onMatchFinished
       }
       hasInitializedRef.current = false;
     };
-  }, [id]); // Only depend on id, not the callbacks
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]); // Only depend on id, not the callbacks to avoid infinite loops
 
   const match = finishedMatchData || matchData;
 
