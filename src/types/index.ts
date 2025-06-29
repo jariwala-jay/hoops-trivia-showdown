@@ -36,7 +36,7 @@ export interface PlayerAnswer {
 
 export interface Match {
   id: string;
-  status: 'PENDING' | 'READY' | 'IN_PROGRESS' | 'FINISHED';
+  status: 'PENDING' | 'READY' | 'INTRO' | 'IN_PROGRESS' | 'FINISHED';
   playerA: Player;
   playerB?: Player;
   nftA: NFT;

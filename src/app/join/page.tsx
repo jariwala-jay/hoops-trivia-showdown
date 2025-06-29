@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import NFTSelector from '@/components/NFTSelector';
 import Navbar from '@/components/Navbar';
@@ -24,9 +24,18 @@ export default function JoinMatchPage() {
   const [rarityError, setRarityError] = useState<string | null>(null);
   const router = useRouter();
   const { flowAddress, isLoading: momentsLoading } = useUserMoments();
+  const searchParams = useSearchParams();
 
   console.log('Join page - Flow address:', flowAddress);
   console.log('Join page - Moments loading:', momentsLoading);
+
+  // Extract match ID from URL parameters on component mount
+  useEffect(() => {
+    const idFromUrl = searchParams.get('id');
+    if (idFromUrl && !matchId) {
+      setMatchId(idFromUrl);
+    }
+  }, [searchParams, matchId]);
 
   // Fetch match info when matchId changes
   useEffect(() => {
@@ -299,12 +308,16 @@ export default function JoinMatchPage() {
                           borderRadius: '9999px',
                           fontSize: '0.75rem',
                           fontWeight: 500,
-                          ...(matchInfo.nftA.rarity?.toLowerCase() === 'legendary' ? 
+                          ...(matchInfo.nftA.rarity?.toLowerCase() === 'ultimate' ? 
+                            { backgroundColor: 'rgba(248, 113, 113, 0.2)', color: '#F87171' } :
+                            matchInfo.nftA.rarity?.toLowerCase() === 'legendary' ? 
                             { backgroundColor: 'rgba(251, 191, 36, 0.2)', color: '#FBBF24' } :
-                            matchInfo.nftA.rarity?.toLowerCase() === 'epic' ? 
-                            { backgroundColor: 'rgba(168, 85, 247, 0.2)', color: '#A855F7' } :
                             matchInfo.nftA.rarity?.toLowerCase() === 'rare' ? 
                             { backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#3B82F6' } :
+                            matchInfo.nftA.rarity?.toLowerCase() === 'fandom' ? 
+                            { backgroundColor: 'rgba(45, 212, 191, 0.2)', color: '#2DD4BF' } :
+                            matchInfo.nftA.rarity?.toLowerCase() === 'common' ? 
+                            { backgroundColor: 'rgba(34, 197, 94, 0.2)', color: '#22C55E' } :
                             { backgroundColor: 'rgba(156, 163, 175, 0.2)', color: '#9CA3AF' })
                         }}>
                           {matchInfo.nftA.rarity}

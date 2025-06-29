@@ -71,7 +71,7 @@ export default function ShotClock({
       if (currentSecond <= 5 && !hasPlayedWarningSound) {
         beepSound.play();
         setHasPlayedWarningSound(true);
-        setTimeout(() => setHasPlayedWarningSound(false), 900); // Reset for next beep
+        setTimeout(() => setHasPlayedWarningSound(false), 1000); // Reset for next beep
       }
     } else {
       setIsWarning(false);

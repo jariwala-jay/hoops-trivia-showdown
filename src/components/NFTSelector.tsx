@@ -31,18 +31,31 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
       serialNumber: moment.serialNumber
     })) : MOCK_NFTS;
 
+  // Filter NFTs by TopShot contract first, then by rarity
+  const topShotNFTs = userNFTs.filter(nft => {
+    // Only include TopShot moments, exclude PackNFT (packs)
+    const isTopShotMoment = nft.contract === 'A.877931736ee77cff.TopShot';
+    const isNotPack = nft.contract !== 'A.877931736ee77cff.PackNFT' && 
+                      !nft.title?.includes('NBA Top Shot Pack') &&
+                      !nft.description?.includes('Reveals official NBA Top Shot Moments when opened');
+    
+    return isTopShotMoment && isNotPack;
+  });
+
   const filteredNFTs = filter === 'all' 
-    ? userNFTs 
-    : userNFTs.filter(nft => nft.rarity?.toLowerCase() === filter.toLowerCase());
+    ? topShotNFTs 
+    : topShotNFTs.filter(nft => nft.rarity?.toLowerCase() === filter.toLowerCase());
 
   const getRarityColor = (rarity: string) => {
     switch (rarity.toLowerCase()) {
+      case 'ultimate':
+        return 'border-red-400 bg-red-400/10';
       case 'legendary':
         return 'border-yellow-400 bg-yellow-400/10';
-      case 'epic':
-        return 'border-purple-400 bg-purple-400/10';
       case 'rare':
         return 'border-blue-400 bg-blue-400/10';
+      case 'fandom':
+        return 'border-teal-400 bg-teal-400/10';
       case 'common':
         return 'border-green-400 bg-green-400/10';
       default:
@@ -81,7 +94,7 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
       {moments.length === 0 && !isLoading && !error && (
         <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
           <p className="text-yellow-200 text-sm">
-            🎮 Using demo NFTs - your real Dapper moments will load here once authenticated
+            🎮 Using demo TopShot NFTs - your real Dapper moments will load here once authenticated
           </p>
         </div>
       )}
@@ -89,14 +102,22 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
       {moments.length > 0 && (
         <div className="mb-4 p-3 bg-green-500/20 border border-green-500/30 rounded-lg">
           <p className="text-green-200 text-sm">
-            ✅ Loaded {moments.length} of your real Dapper moments!
+            ✅ Loaded {topShotNFTs.length} TopShot moments from your {moments.length} total items (packs excluded)!
+          </p>
+        </div>
+      )}
+
+      {moments.length > 0 && topShotNFTs.length === 0 && (
+        <div className="mb-4 p-3 bg-orange-500/20 border border-orange-500/30 rounded-lg">
+          <p className="text-orange-200 text-sm">
+            ⚠️ No TopShot moments found in your {moments.length} items. Only opened TopShot moments (not packs) can be used in this game.
           </p>
         </div>
       )}
 
       {/* Filter Buttons */}
       <div className="flex flex-wrap gap-2 mb-6">
-        {['all', 'legendary', 'epic', 'rare', 'common'].map((rarity) => (
+        {['all', 'common', 'fandom', 'rare', 'legendary', 'ultimate'].map((rarity) => (
           <button
             key={rarity}
             onClick={() => setFilter(rarity)}
@@ -106,7 +127,7 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
                 : 'bg-white/10 text-white hover:bg-white/20'
             }`}
           >
-            {rarity === 'common' ? 'Fandom' : rarity}
+            {rarity}
           </button>
         ))}
       </div>
@@ -157,13 +178,14 @@ export default function NFTSelector({ selectedNFT, onSelect, className = '' }: N
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-gray-400">#{nft.serialNumber || 'N/A'}</span>
                   <span className={`text-xs px-2 py-1 rounded-full ${
+                    nft.rarity?.toLowerCase() === 'ultimate' ? 'bg-red-400/20 text-red-400' :
                     nft.rarity?.toLowerCase() === 'legendary' ? 'bg-yellow-400/20 text-yellow-400' :
-                    nft.rarity?.toLowerCase() === 'epic' ? 'bg-purple-400/20 text-purple-400' :
                     nft.rarity?.toLowerCase() === 'rare' ? 'bg-blue-400/20 text-blue-400' :
+                    nft.rarity?.toLowerCase() === 'fandom' ? 'bg-teal-400/20 text-teal-400' :
                     nft.rarity?.toLowerCase() === 'common' ? 'bg-green-400/20 text-green-400' :
                     'bg-gray-400/20 text-gray-400'
                   }`}>
-                    {nft.rarity === 'Common' ? 'Fandom' : nft.rarity}
+                    {nft.rarity}
                   </span>
                 </div>
               </div>

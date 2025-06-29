@@ -11,8 +11,8 @@ import AnimatedButton from '@/components/AnimatedButton';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { NFT } from '@/types';
 import toast from 'react-hot-toast';
-import Image from 'next/image';
 import { useUserMoments } from '@/hooks/useUserMoments';
+import SelectedNFTDisplay from '@/components/SelectedNFTDisplay';
 
 export default function CreateMatchPage() {
   const [selectedNFT, setSelectedNFT] = useState<NFT | null>(null);
@@ -163,75 +163,10 @@ export default function CreateMatchPage() {
           {selectedNFT && (
             <div style={{ marginBottom: '2rem' }}>
               <Card>
-                <h2 style={{
-                  fontSize: '1.5rem',
-                  fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
-                  fontWeight: 700,
-                  color: '#F8F9FA',
-                  marginBottom: '1rem'
-                }}>
-                  Selected NFT
-                </h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div style={{
-                    width: '6rem',
-                    height: '8rem',
-                    borderRadius: '0.5rem',
-                    overflow: 'hidden',
-                    position: 'relative'
-                  }}>
-                    <Image
-                      src={selectedNFT.image}
-                      alt={selectedNFT.name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      width={100}
-                      height={100}
-                    />
-                  </div>
-                  <div>
-                    <h3 style={{
-                      fontSize: '1.25rem',
-                      fontFamily: 'var(--font-montserrat), Montserrat, system-ui, sans-serif',
-                      fontWeight: 700,
-                      color: '#F8F9FA',
-                      marginBottom: '0.25rem'
-                    }}>
-                      {selectedNFT.name}
-                    </h3>
-                    <p style={{ color: '#D1D5DB', marginBottom: '0.5rem' }}>
-                      {selectedNFT.collection}
-                    </p>
-                    <span style={{
-                      display: 'inline-block',
-                      padding: '0.25rem 0.75rem',
-                      borderRadius: '9999px',
-                      fontSize: '0.875rem',
-                      fontWeight: 500,
-                      ...(selectedNFT.rarity?.toLowerCase() === 'legendary' ? 
-                        { backgroundColor: 'rgba(251, 191, 36, 0.2)', color: '#FBBF24' } :
-                        selectedNFT.rarity?.toLowerCase() === 'epic' ? 
-                        { backgroundColor: 'rgba(168, 85, 247, 0.2)', color: '#A855F7' } :
-                        selectedNFT.rarity?.toLowerCase() === 'rare' ? 
-                        { backgroundColor: 'rgba(59, 130, 246, 0.2)', color: '#3B82F6' } :
-                        { backgroundColor: 'rgba(156, 163, 175, 0.2)', color: '#9CA3AF' })
-                    }}>
-                      {selectedNFT.rarity}
-                    </span>
-                  </div>
-                </div>
-                
-                <div style={{
-                  marginTop: '1rem',
-                  padding: '1rem',
-                  backgroundColor: 'rgba(255, 110, 0, 0.1)',
-                  borderRadius: '0.5rem',
-                  border: '1px solid rgba(255, 110, 0, 0.2)'
-                }}>
-                  <p style={{ color: '#FF6E00', fontSize: '0.875rem' }}>
-                    💡 <strong>Arena Rules:</strong> Only players with {selectedNFT.rarity} rarity NFTs can join this match. 
-                    Your opponent must stake an NFT of the same rarity level.
-                  </p>
-                </div>
+                <SelectedNFTDisplay 
+                  nft={selectedNFT}
+                  showRarityInfo={true}
+                />
               </Card>
             </div>
           )}

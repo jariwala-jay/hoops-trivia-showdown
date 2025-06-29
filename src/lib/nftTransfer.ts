@@ -477,7 +477,7 @@ export async function createNFTTransferService(serverSideContext?: {
     accessToken = tokenData.accessToken;
 
     // Get authenticated user info
-    const userResponse = await fetch(`${baseUrl}/api/auth/me`, { headers });
+    const userResponse = await fetch(`${baseUrl}/auth/profile`, { headers });
     if (!userResponse.ok) {
       const errorText = await userResponse.text();
       console.error('User info response error:', errorText);

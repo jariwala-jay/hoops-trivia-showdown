@@ -7,7 +7,7 @@ interface UseSoundOptions {
 }
 
 interface SoundControls {
-  play: () => void;
+  play: () => Promise<void>;
   stop: () => void;
   setVolume: (volume: number) => void;
   isPlaying: boolean;
@@ -39,10 +39,15 @@ export const useSound = (
     const handlePlay = () => setIsPlaying(true);
     const handleEnded = () => setIsPlaying(false);
     const handlePause = () => setIsPlaying(false);
+    const handleError = (e: Event) => {
+      console.warn('Audio error for', src, ':', e);
+      setIsPlaying(false);
+    };
 
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('pause', handlePause);
+    audio.addEventListener('error', handleError);
 
     audioRef.current = audio;
 
@@ -50,30 +55,46 @@ export const useSound = (
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('error', handleError);
       audio.pause();
       audioRef.current = null;
     };
   }, [src, volume, preload]);
 
-  const play = useCallback(() => {
+  const play = useCallback(async (): Promise<void> => {
     const now = Date.now();
     const audio = audioRef.current;
 
-    if (!audio) return;
+    if (!audio) {
+      console.warn('Audio element not initialized for', src);
+      return Promise.resolve();
+    }
 
-    // Debounce rapid plays
-    if (now - lastPlayedRef.current < debounceMs) {
-      return;
+    // Debounce rapid plays only if debounceMs > 0
+    if (debounceMs > 0 && now - lastPlayedRef.current < debounceMs) {
+      console.log('Audio play debounced for', src);
+      return Promise.resolve();
     }
 
     lastPlayedRef.current = now;
 
-    // Reset audio to beginning and play
-    audio.currentTime = 0;
-    audio.play().catch(error => {
-      console.warn('Audio play failed:', error);
-    });
-  }, [debounceMs]);
+    try {
+      // Stop any current playback first to avoid interruption errors
+      if (!audio.paused) {
+        audio.pause();
+      }
+      
+      // Reset audio to beginning
+      audio.currentTime = 0;
+      
+      // Play the audio
+      await audio.play();
+      console.log('Audio played successfully:', src);
+    } catch (error) {
+      console.warn('Audio play failed for', src, ':', error);
+      // Don't throw, just log the error
+    }
+  }, [debounceMs, src]);
 
   const stop = useCallback(() => {
     const audio = audioRef.current;

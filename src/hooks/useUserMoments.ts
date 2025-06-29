@@ -3,11 +3,17 @@ import { useUser } from '@auth0/nextjs-auth0';
 import { NFT } from '@/types';
 
 // Helper function to extract rarity from description
-function extractRarity(description: string): 'Common' | 'Rare' | 'Epic' | 'Legendary' {
+function extractRarity(description: string): 'Common' | 'Fandom' | 'Rare' | 'Legendary' | 'Ultimate' {
   const lowerDesc = description.toLowerCase();
+  
+  // Check for specific rarity keywords in order of precedence (highest to lowest)
+  if (lowerDesc.includes('ultimate')) return 'Ultimate';
   if (lowerDesc.includes('legendary')) return 'Legendary';
-  if (lowerDesc.includes('epic')) return 'Epic';
   if (lowerDesc.includes('rare')) return 'Rare';
+  if (lowerDesc.includes('fandom')) return 'Fandom';
+  if (lowerDesc.includes('common')) return 'Common';
+  
+  // Default fallback - most TopShot moments are Common if not specified
   return 'Common';
 }
 
