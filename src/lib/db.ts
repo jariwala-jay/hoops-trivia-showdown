@@ -166,10 +166,10 @@ const kvDB = {
     try {
       if (!kv) return fallbackDB.getMatch(id);
       
-      const matchData = await kv.get(`${MATCH_PREFIX}${id}`);
+      const matchData = await kv.get<Match>(`${MATCH_PREFIX}${id}`);
       if (!matchData) return null;
       
-      return typeof matchData === 'string' ? JSON.parse(matchData) : matchData;
+      return matchData;
     } catch (error) {
       console.error('Error getting match:', error);
       return fallbackDB.getMatch(id);
