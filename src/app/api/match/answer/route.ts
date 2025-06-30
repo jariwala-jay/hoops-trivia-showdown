@@ -93,10 +93,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if both players have answered the current question
-    const currentQuestionId = match.questions[match.currentQuestionIndex]?.id;
     const currentQuestionAnswers = {
-      playerA: updatedMatch.answersA.filter(a => a.questionId === currentQuestionId).length,
-      playerB: updatedMatch.answersB.filter(a => a.questionId === currentQuestionId).length
+      playerA: updatedMatch.answersA.filter(a => a.questionId === questionId).length,
+      playerB: updatedMatch.answersB.filter(a => a.questionId === questionId).length
     };
 
     // If both players have answered the current question, move to next question
